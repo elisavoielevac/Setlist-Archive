@@ -22,6 +22,7 @@ const deleteConfirmMessage = document.querySelector("#deleteConfirmMessage");
 const cancelDeleteBtn = document.querySelector("#cancelDeleteBtn");
 const confirmDeleteBtn = document.querySelector("#confirmDeleteBtn");
 const trackerNameEl = document.querySelector("#trackerName");
+const trackerFolderEl = document.querySelector("#trackerFolder");
 const trackerStatusEl = document.querySelector("#trackerStatus");
 const newTrackerBtn = document.querySelector("#newTrackerBtn");
 const openTrackerBtn = document.querySelector("#openTrackerBtn");
@@ -35,9 +36,11 @@ let pendingDeleteConfirmation = null;
 let activeTracker = null;
 let trackerSaveStatus = "saved";
 let trackerSaveRevision = 0;
+let homeDirectory = null;
 
 bindEvents();
 renderAll();
+void loadHomeDirectory();
 void restoreLastTracker();
 
 function bindEvents() {
@@ -156,6 +159,34 @@ function trackerDisplayName(path) {
   return trackerFileName(path).replace(/\.setlisttracker$/i, "");
 }
 
+function trackerParentFolder(path) {
+  const separatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  return separatorIndex > 0 ? path.slice(0, separatorIndex) : "";
+}
+
+function compactTrackerFolder(path) {
+  const folder = trackerParentFolder(path);
+  if (!folder || !homeDirectory) return folder;
+
+  const normalizedHome = homeDirectory.replace(/[\\/]$/, "");
+  const separator = folder.includes("\\") ? "\\" : "/";
+  if (folder === normalizedHome) return "~";
+  if (folder.startsWith(`${normalizedHome}${separator}`)) return `~${folder.slice(normalizedHome.length)}`;
+  return folder;
+}
+
+async function loadHomeDirectory() {
+  const homeDir = window.__TAURI__?.path?.homeDir;
+  if (!homeDir) return;
+
+  try {
+    homeDirectory = await homeDir();
+    renderTrackerState();
+  } catch (error) {
+    console.error("Failed to resolve the home directory", error);
+  }
+}
+
 function ensureTrackerExtension(path) {
   return /\.setlisttracker$/i.test(path) ? path : `${path}.setlisttracker`;
 }
@@ -171,6 +202,8 @@ function clearTrackerSelectionState() {
 function renderTrackerState() {
   if (!activeTracker) {
     trackerNameEl.textContent = "No tracker open";
+    trackerFolderEl.textContent = "";
+    trackerFolderEl.classList.add("hidden");
     trackerStatusEl.textContent = "Create or open a tracker to begin";
     saveAsTrackerBtn.disabled = true;
     fileInput.disabled = true;
@@ -181,6 +214,8 @@ function renderTrackerState() {
   }
 
   trackerNameEl.textContent = trackerDisplayName(activeTracker.path);
+  trackerFolderEl.textContent = compactTrackerFolder(activeTracker.path);
+  trackerFolderEl.classList.toggle("hidden", !trackerFolderEl.textContent);
   trackerStatusEl.textContent = {
     saving: "Saving…",
     saved: "Saved",
