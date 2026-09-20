@@ -13,15 +13,15 @@
         <p class="lede">
           Drop in your Reaper project files (.rpp) or an exported marker CSV. Every marker becomes a
           song entry you can search across every show you've ever recorded — along with tour, lineup
-          and notes. Your archive stays in this browser until you create or open a tracker file.
+          and notes. Create or open a tracker file to start building your archive.
         </p>
       </header>
 
       <div class="tracker-bar">
         <div class="tracker-state">
           <span class="tracker-label">Tracker</span>
-          <strong id="trackerName">Local archive</strong>
-          <span id="trackerStatus" class="tracker-status">Saved in this browser</span>
+          <strong id="trackerName">No tracker open</strong>
+          <span id="trackerStatus" class="tracker-status">Create or open a tracker to begin</span>
         </div>
         <div class="tracker-actions">
           <button id="newTrackerBtn" type="button" class="primary-btn">New Tracker</button>
@@ -48,8 +48,8 @@
       <div class="section-label">Add a show</div>
       <div id="dropzone" class="dropzone">
         <div id="dzText">
-          <strong>Drop .rpp or .csv files here</strong><br />
-          or click to choose files
+          <strong>Create or open a tracker first</strong><br />
+          then import .rpp or .csv files
         </div>
       </div>
       <input id="fileInput" type="file" multiple accept=".rpp,.csv,.txt" hidden />

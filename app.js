@@ -2,6 +2,7 @@ const trackerPersistence = window.trackerPersistence;
 
 const fileInput = document.querySelector("#fileInput");
 const dropzone = document.querySelector("#dropzone");
+const dropzoneText = document.querySelector("#dzText");
 const searchInput = document.querySelector("#search");
 const searchResults = document.querySelector("#searchResults");
 const showList = document.querySelector("#showList");
@@ -35,23 +36,28 @@ let activeTracker = null;
 let trackerSaveStatus = "saved";
 let trackerSaveRevision = 0;
 
-shows = loadShows();
 bindEvents();
 renderAll();
 void restoreLastTracker();
 
 function bindEvents() {
   fileInput.addEventListener("change", (event) => {
+    if (!requireActiveTracker()) {
+      fileInput.value = "";
+      return;
+    }
     handleFiles(event.target.files);
     fileInput.value = "";
   });
 
-  dropzone.addEventListener("click", () => fileInput.click());
+  dropzone.addEventListener("click", () => {
+    if (requireActiveTracker()) fileInput.click();
+  });
 
   ["dragenter", "dragover"].forEach((type) => {
     dropzone.addEventListener(type, (event) => {
       event.preventDefault();
-      dropzone.classList.add("is-dragover");
+      if (activeTracker) dropzone.classList.add("is-dragover");
     });
   });
 
@@ -63,6 +69,7 @@ function bindEvents() {
   });
 
   dropzone.addEventListener("drop", (event) => {
+    if (!requireActiveTracker()) return;
     handleFiles(event.dataTransfer?.files);
   });
 
@@ -98,27 +105,15 @@ function bindEvents() {
   showList.addEventListener("change", onShowListChange);
 }
 
-function loadShows() {
-  try {
-    return trackerPersistence.loadActiveShows();
-  } catch (error) {
-    console.error("Failed to load saved shows", error);
-    return [];
-  }
+function saveShows() {
+  if (!activeTracker) return;
+  queueActiveTrackerSave();
 }
 
-function saveShows() {
-  if (activeTracker) {
-    queueActiveTrackerSave();
-    return;
-  }
-
-  try {
-    trackerPersistence.saveActiveShows(shows);
-  } catch (error) {
-    console.error("Failed to save shows", error);
-    toast("Could not save — browser storage may be full");
-  }
+function requireActiveTracker() {
+  if (activeTracker) return true;
+  toast("Create or open a tracker before adding shows");
+  return false;
 }
 
 function queueActiveTrackerSave() {
@@ -175,9 +170,13 @@ function clearTrackerSelectionState() {
 
 function renderTrackerState() {
   if (!activeTracker) {
-    trackerNameEl.textContent = "Local archive";
-    trackerStatusEl.textContent = "Saved in this browser";
+    trackerNameEl.textContent = "No tracker open";
+    trackerStatusEl.textContent = "Create or open a tracker to begin";
     saveAsTrackerBtn.disabled = true;
+    fileInput.disabled = true;
+    dropzone.classList.add("is-disabled");
+    dropzone.setAttribute("aria-disabled", "true");
+    dropzoneText.innerHTML = "<strong>Create or open a tracker first</strong><br />then import .rpp or .csv files";
     return;
   }
 
@@ -188,6 +187,10 @@ function renderTrackerState() {
     failed: "Save failed",
   }[trackerSaveStatus];
   saveAsTrackerBtn.disabled = false;
+  fileInput.disabled = false;
+  dropzone.classList.remove("is-disabled");
+  dropzone.setAttribute("aria-disabled", "false");
+  dropzoneText.innerHTML = "<strong>Drop .rpp or .csv files here</strong><br />or click to choose files";
 }
 
 async function activateTracker(path, tracker) {
@@ -234,7 +237,7 @@ async function restoreLastTracker() {
     } catch (clearError) {
       console.error("Failed to clear the invalid tracker preference", clearError);
     }
-    toast("Could not reopen the last tracker. Showing local archive.");
+    toast("Could not reopen the last tracker. Create or open a tracker.");
   }
 }
 
@@ -537,6 +540,7 @@ function fuzzyScore(target, query) {
 }
 
 function addMarkersAsShow(filename, markers, items) {
+  if (!requireActiveTracker()) return;
   items = items || [];
   if (!markers.length && !items.length) {
     toast(`No markers or audio found in ${filename}`);
@@ -565,7 +569,7 @@ function addMarkersAsShow(filename, markers, items) {
 }
 
 function handleFiles(fileList) {
-  if (!fileList?.length) return;
+  if (!requireActiveTracker() || !fileList?.length) return;
 
   [...fileList].forEach((file) => {
     const reader = new FileReader();
@@ -600,12 +604,13 @@ async function setupTauriFileDrop() {
     await currentWebview.onDragDropEvent(async (event) => {
       const { type } = event.payload;
       if (type === "over") {
-        dropzone.classList.add("is-dragover");
+        if (activeTracker) dropzone.classList.add("is-dragover");
         return;
       }
 
       dropzone.classList.remove("is-dragover");
       if (type !== "drop") return;
+      if (!requireActiveTracker()) return;
 
       const paths = event.payload.paths || [];
       console.info("[Tauri drop] Native drop received", paths);
@@ -672,7 +677,9 @@ function sortedShows() {
 
 function renderShows() {
   if (!shows.length) {
-    showList.innerHTML = `<div class="empty">No shows yet — drop a Reaper project or marker CSV above to get started.</div>`;
+    showList.innerHTML = activeTracker
+      ? `<div class="empty">No shows yet — drop a Reaper project or marker CSV above to get started.</div>`
+      : `<div class="empty">Create a new tracker or open an existing tracker to get started.</div>`;
     return;
   }
 
@@ -1053,7 +1060,9 @@ function statChip(value, label) {
 
 function renderStats() {
   if (!shows.length) {
-    statsContent.innerHTML = `<div class="empty">Add some shows to see stats.</div>`;
+    statsContent.innerHTML = activeTracker
+      ? `<div class="empty">Add some shows to see stats.</div>`
+      : `<div class="empty">Open a tracker to see stats.</div>`;
     return;
   }
 
