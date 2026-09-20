@@ -77,6 +77,18 @@
     return parseTrackerFile(contents);
   }
 
+  async function renameManagedTrackerFile(oldName, newName) {
+    return tauriInvoke()("rename_managed_tracker_file", { oldName, newName });
+  }
+
+  async function deleteManagedTrackerFile(name) {
+    await tauriInvoke()("delete_managed_tracker_file", { name });
+  }
+
+  async function revealManagedTrackerFile(name) {
+    await tauriInvoke()("reveal_managed_tracker_file", { name });
+  }
+
   function queueTrackerFileWrite(path, shows, createdAt, updatedAt = Date.now()) {
     const contents = serializeTrackerFile(shows, createdAt, updatedAt);
     const write = trackerWriteQueue.then(async () => {
@@ -143,6 +155,9 @@
     readManagedTrackerFile,
     writeTrackerFile,
     writeManagedTrackerFile,
+    renameManagedTrackerFile,
+    deleteManagedTrackerFile,
+    revealManagedTrackerFile,
     queueTrackerFileWrite,
     queueManagedTrackerFileWrite,
     waitForTrackerFileWrites,
