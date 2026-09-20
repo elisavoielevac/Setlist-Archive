@@ -1,0 +1,8 @@
+# macOS metadata
+.DS_Store
+
+# Rust/Tauri build output
+target/
+
+# Tauri-generated schemas
+src-tauri/gen/

@@ -57,6 +57,8 @@ function bindEvents() {
     searchDebounce = setTimeout(renderSearch, 120);
   });
 
+  setupTauriFileDrop();
+
   searchResults.addEventListener("click", (event) => {
     const hit = event.target.closest("[data-focus-show]");
     if (hit) focusShow(hit.dataset.focusShow);
@@ -354,15 +356,60 @@ function handleFiles(fileList) {
     reader.addEventListener("error", () => toast(`Could not read ${file.name}`));
     reader.addEventListener("load", (event) => {
       const text = typeof event.target.result === "string" ? event.target.result : "";
-      if (/\.csv$/i.test(file.name)) {
-        addMarkersAsShow(file.name, parseCsv(text), []);
-        return;
-      }
-      const parsed = parseRppFull(text);
-      addMarkersAsShow(file.name, parsed.markers, parsed.items);
+      importFileText(file.name, text);
     });
     reader.readAsText(file);
   });
+}
+
+function importFileText(filename, text) {
+  if (/\.csv$/i.test(filename)) {
+    addMarkersAsShow(filename, parseCsv(text), []);
+    return;
+  }
+  const parsed = parseRppFull(text);
+  addMarkersAsShow(filename, parsed.markers, parsed.items);
+}
+
+async function setupTauriFileDrop() {
+  const tauriWebview = window.__TAURI__?.webview;
+  const invoke = window.__TAURI__?.core?.invoke;
+  if (!tauriWebview?.getCurrentWebview || !invoke) {
+    console.info("[Tauri drop] Native drag-and-drop API is unavailable; using browser file input only.");
+    return;
+  }
+
+  try {
+    const currentWebview = tauriWebview.getCurrentWebview();
+    await currentWebview.onDragDropEvent(async (event) => {
+      const { type } = event.payload;
+      if (type === "over") {
+        dropzone.classList.add("is-dragover");
+        return;
+      }
+
+      dropzone.classList.remove("is-dragover");
+      if (type !== "drop") return;
+
+      const paths = event.payload.paths || [];
+      console.info("[Tauri drop] Native drop received", paths);
+      await Promise.all(paths.map(async (path) => {
+        const filename = path.split(/[\\/]/).pop() || path;
+        try {
+          const text = await invoke("read_text_file", { path });
+          console.info(`[Tauri drop] Read ${filename}; importing with the existing parser.`);
+          importFileText(filename, text);
+          console.info(`[Tauri drop] Imported ${filename}.`);
+        } catch (error) {
+          console.error(`[Tauri drop] Failed to read ${filename}`, error);
+          toast(`Could not read ${filename}`);
+        }
+      }));
+    });
+    console.info("[Tauri drop] Native drop listener registered.");
+  } catch (error) {
+    console.error("[Tauri drop] Failed to register the native drop listener", error);
+  }
 }
 
 function renderRecordingLength(show) {
