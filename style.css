@@ -677,6 +677,10 @@ textarea:focus {
   background: rgba(0, 0, 0, 0.68);
 }
 
+.secondary-dialog {
+  z-index: 70;
+}
+
 .confirm-dialog-panel {
   width: min(24rem, 100%);
   padding: 1rem;

@@ -55,6 +55,7 @@ let activeTracker = null;
 let trackerSaveStatus = "saved";
 let trackerSaveRevision = 0;
 let selectedManagedArchiveName = null;
+let dialogReturnFocus = null;
 
 bindEvents();
 renderAll();
@@ -131,8 +132,14 @@ function bindEvents() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      resolveDeleteConfirmation(false);
-      resolveTrackerNameDialog(null);
+      if (pendingDeleteConfirmation) {
+        resolveDeleteConfirmation(false);
+        return;
+      }
+      if (pendingTrackerNameDialog) {
+        resolveTrackerNameDialog(null);
+        return;
+      }
       closeManageArchives();
     }
   });
@@ -267,6 +274,7 @@ async function restoreLastTracker() {
 function requestManagedTrackerName({ title, message = "", defaultName = "", submitLabel }) {
   return new Promise((resolve) => {
     pendingTrackerNameDialog = resolve;
+    dialogReturnFocus = document.activeElement;
     trackerNameDialogTitle.textContent = title;
     trackerNameDialogMessage.textContent = message;
     trackerNameDialogMessage.classList.toggle("hidden", !message);
@@ -290,6 +298,7 @@ function requestManagedTrackerName({ title, message = "", defaultName = "", subm
 function requestManagedArchiveSelection(archiveNames) {
   return new Promise((resolve) => {
     pendingTrackerNameDialog = resolve;
+    dialogReturnFocus = document.activeElement;
     trackerNameDialogTitle.textContent = "Open Archive";
     trackerNameDialogMessage.textContent = "";
     trackerNameDialogMessage.classList.add("hidden");
@@ -344,6 +353,15 @@ function resolveTrackerNameDialog(name) {
   pendingTrackerNameDialog = null;
   trackerNameDialog.classList.add("hidden");
   resolve(name);
+  restoreDialogFocus();
+}
+
+function restoreDialogFocus() {
+  const element = dialogReturnFocus;
+  dialogReturnFocus = null;
+  if (element instanceof HTMLElement && document.contains(element) && !element.matches(":disabled")) {
+    element.focus();
+  }
 }
 
 function validateManagedTrackerName(name) {
@@ -1155,6 +1173,7 @@ function confirmSelectedDeletion(message) {
   if (!window.__TAURI__) return Promise.resolve(window.confirm(message));
   if (pendingDeleteConfirmation) return Promise.resolve(false);
 
+  dialogReturnFocus = document.activeElement;
   deleteConfirmMessage.textContent = message;
   deleteConfirmDialog.classList.remove("hidden");
   confirmDeleteBtn.focus();
@@ -1169,6 +1188,7 @@ function resolveDeleteConfirmation(confirmed) {
   pendingDeleteConfirmation = null;
   deleteConfirmDialog.classList.add("hidden");
   resolve(confirmed);
+  restoreDialogFocus();
 }
 
 function getSortedIds() {
