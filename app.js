@@ -1,4 +1,4 @@
-const STORAGE_KEY = "setlist-archive-shows-v1";
+const trackerPersistence = window.trackerPersistence;
 
 const fileInput = document.querySelector("#fileInput");
 const dropzone = document.querySelector("#dropzone");
@@ -27,7 +27,7 @@ let lastSelectedIndex = null;
 let searchDebounce = null;
 let pendingDeleteConfirmation = null;
 
-shows = loadShowsFromStorage();
+shows = loadShows();
 bindEvents();
 renderAll();
 
@@ -86,23 +86,20 @@ function bindEvents() {
   showList.addEventListener("change", onShowListChange);
 }
 
-function loadShowsFromStorage() {
+function loadShows() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return trackerPersistence.loadActiveShows();
   } catch (error) {
-    console.error("Failed to load from localStorage", error);
+    console.error("Failed to load saved shows", error);
     return [];
   }
 }
 
-function saveShowsToStorage() {
+function saveShows() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(shows));
+    trackerPersistence.saveActiveShows(shows);
   } catch (error) {
-    console.error("Failed to save to localStorage", error);
+    console.error("Failed to save shows", error);
     toast("Could not save — browser storage may be full");
   }
 }
@@ -353,7 +350,7 @@ function addMarkersAsShow(filename, markers, items) {
   };
 
   shows.unshift(show);
-  saveShowsToStorage();
+  saveShows();
   renderAll();
   toast(`Added "${show.name}" — ${markers.length} song${markers.length === 1 ? "" : "s"}`);
 }
@@ -570,7 +567,7 @@ function updateShowField(id, field, value) {
   const show = shows.find((item) => item.id === id);
   if (!show) return;
   show[field] = value;
-  saveShowsToStorage();
+  saveShows();
   renderAll();
   reopenShow(id);
 }
@@ -580,7 +577,7 @@ function updateNumSets(id, value) {
   if (!show) return;
   const parsed = Number.parseInt(value, 10);
   show.numSets = Number.isNaN(parsed) || parsed < 1 ? 2 : parsed;
-  saveShowsToStorage();
+  saveShows();
   renderAll();
   reopenShow(id);
 }
@@ -588,7 +585,7 @@ function updateNumSets(id, value) {
 function removeShow(id) {
   shows = shows.filter((item) => item.id !== id);
   selectedIds.delete(id);
-  saveShowsToStorage();
+  saveShows();
   renderAll();
   toast("Show deleted");
 }
@@ -605,7 +602,7 @@ async function deleteSelectedShows() {
   shows = shows.filter((show) => !selectedShowIds.has(show.id));
   lastSelectedIndex = null;
   selectedIds.clear();
-  saveShowsToStorage();
+  saveShows();
   renderAll();
   toast(`Deleted ${label}`);
 }
@@ -721,7 +718,7 @@ function applyBulkEdit() {
     count += 1;
   });
 
-  saveShowsToStorage();
+  saveShows();
   bulkTour.value = "";
   bulkLineup.value = "";
   bulkNotes.value = "";

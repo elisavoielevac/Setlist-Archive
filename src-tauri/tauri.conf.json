@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.elisavoielevac.reapersetlisttracker",
   "build": {
-    "frontendDist": ["../index.html", "../app.js", "../style.css"]
+    "frontendDist": ["../index.html", "../app.js", "../style.css", "../tracker-persistence.js"]
   },
   "app": {
     "withGlobalTauri": true,
