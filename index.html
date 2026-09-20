@@ -26,6 +26,7 @@
         <div class="tracker-actions">
           <button id="newTrackerBtn" type="button" class="primary-btn">New Archive</button>
           <button id="openTrackerBtn" type="button" class="text-btn">Open Archive</button>
+          <button id="manageArchivesBtn" type="button" class="text-btn">Manage Archives</button>
           <button id="saveAsTrackerBtn" type="button" class="text-btn">Duplicate Archive</button>
         </div>
       </div>
@@ -115,6 +116,16 @@
         <div class="confirm-dialog-actions">
           <button id="cancelTrackerNameBtn" type="button" class="text-btn">Cancel</button>
           <button id="confirmTrackerNameBtn" type="button" class="primary-btn">Create</button>
+        </div>
+      </div>
+    </div>
+    <div id="manageArchivesDialog" class="confirm-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="manageArchivesDialogTitle">
+      <div class="confirm-dialog-panel manage-archives-dialog-panel">
+        <p id="manageArchivesDialogTitle">Manage Archives</p>
+        <div id="manageArchivesList" class="manage-archives-list" role="group" aria-label="Managed archives"></div>
+        <div class="confirm-dialog-actions">
+          <button id="cancelManageArchivesBtn" type="button" class="text-btn">Close</button>
+          <button id="openManagedArchiveBtn" type="button" class="primary-btn" disabled>Open</button>
         </div>
       </div>
     </div>

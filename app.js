@@ -34,7 +34,12 @@ const trackerNameEl = document.querySelector("#trackerName");
 const trackerStatusEl = document.querySelector("#trackerStatus");
 const newTrackerBtn = document.querySelector("#newTrackerBtn");
 const openTrackerBtn = document.querySelector("#openTrackerBtn");
+const manageArchivesBtn = document.querySelector("#manageArchivesBtn");
 const saveAsTrackerBtn = document.querySelector("#saveAsTrackerBtn");
+const manageArchivesDialog = document.querySelector("#manageArchivesDialog");
+const manageArchivesList = document.querySelector("#manageArchivesList");
+const cancelManageArchivesBtn = document.querySelector("#cancelManageArchivesBtn");
+const openManagedArchiveBtn = document.querySelector("#openManagedArchiveBtn");
 
 let shows = [];
 let selectedIds = new Set();
@@ -45,6 +50,7 @@ let pendingTrackerNameDialog = null;
 let activeTracker = null;
 let trackerSaveStatus = "saved";
 let trackerSaveRevision = 0;
+let selectedManagedArchiveName = null;
 
 bindEvents();
 renderAll();
@@ -104,7 +110,10 @@ function bindEvents() {
   document.querySelector("#deleteSelectedBtn").addEventListener("click", deleteSelectedShows);
   newTrackerBtn.addEventListener("click", createTracker);
   openTrackerBtn.addEventListener("click", openTracker);
+  manageArchivesBtn.addEventListener("click", showManageArchives);
   saveAsTrackerBtn.addEventListener("click", saveTrackerAs);
+  cancelManageArchivesBtn.addEventListener("click", closeManageArchives);
+  openManagedArchiveBtn.addEventListener("click", openSelectedManagedArchive);
   cancelDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(false));
   confirmDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(true));
   cancelTrackerNameBtn.addEventListener("click", () => resolveTrackerNameDialog(null));
@@ -116,6 +125,7 @@ function bindEvents() {
     if (event.key === "Escape") {
       resolveDeleteConfirmation(false);
       resolveTrackerNameDialog(null);
+      closeManageArchives();
     }
   });
 
@@ -371,12 +381,95 @@ async function openTracker() {
     const archiveNames = await trackerPersistence.listManagedTrackerFiles();
     const selectedName = await requestManagedArchiveSelection(archiveNames);
     if (!selectedName) return;
-    const tracker = await trackerPersistence.readManagedTrackerFile(selectedName);
-    if (!(await waitForActiveTrackerSaves())) return;
-    await activateTracker(selectedName, tracker);
+    if (!(await switchToManagedArchive(selectedName))) return;
     toast(`Opened ${trackerDisplayName(selectedName)}`);
   } catch (error) {
     console.error("Failed to open tracker", error);
+    toast("Could not open archive. The current archive was not changed.");
+  }
+}
+
+async function switchToManagedArchive(name) {
+  if (!(await waitForActiveTrackerSaves())) return false;
+  if (activeTracker?.name === name) return true;
+  const tracker = await trackerPersistence.readManagedTrackerFile(name);
+  await activateTracker(name, tracker);
+  return true;
+}
+
+async function showManageArchives() {
+  try {
+    const archiveNames = await trackerPersistence.listManagedTrackerFiles();
+    selectedManagedArchiveName = activeTracker && archiveNames.includes(activeTracker.name) ? activeTracker.name : null;
+    renderManageArchives(archiveNames);
+    manageArchivesDialog.classList.remove("hidden");
+    requestAnimationFrame(() => {
+      const selectedRow = manageArchivesList.querySelector(".manage-archive-row.is-selected");
+      const firstRow = manageArchivesList.querySelector(".manage-archive-row");
+      (selectedRow || firstRow || cancelManageArchivesBtn).focus();
+    });
+  } catch (error) {
+    console.error("Failed to list managed archives", error);
+    toast("Could not load archives");
+  }
+}
+
+function renderManageArchives(archiveNames) {
+  manageArchivesList.innerHTML = "";
+
+  if (!archiveNames.length) {
+    const emptyState = document.createElement("div");
+    emptyState.className = "manage-archives-empty";
+    emptyState.textContent = "No archives available";
+    manageArchivesList.append(emptyState);
+  } else {
+    archiveNames.forEach((name) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "manage-archive-row";
+      row.setAttribute("aria-pressed", String(name === selectedManagedArchiveName));
+
+      if (name === selectedManagedArchiveName) row.classList.add("is-selected");
+
+      const archiveName = document.createElement("span");
+      archiveName.className = "manage-archive-name";
+      archiveName.textContent = trackerDisplayName(name);
+      row.append(archiveName);
+
+      if (activeTracker && name === activeTracker.name) {
+        const status = document.createElement("span");
+        status.className = "manage-archive-status";
+        status.textContent = "Active";
+        row.append(status);
+      }
+
+      row.addEventListener("click", () => {
+        selectedManagedArchiveName = name;
+        renderManageArchives(archiveNames);
+      });
+      manageArchivesList.append(row);
+    });
+  }
+
+  openManagedArchiveBtn.disabled = !selectedManagedArchiveName;
+}
+
+function closeManageArchives() {
+  if (manageArchivesDialog.classList.contains("hidden")) return;
+  selectedManagedArchiveName = null;
+  manageArchivesDialog.classList.add("hidden");
+}
+
+async function openSelectedManagedArchive() {
+  const name = selectedManagedArchiveName;
+  if (!name) return;
+
+  try {
+    if (!(await switchToManagedArchive(name))) return;
+    closeManageArchives();
+    toast(`Opened ${trackerDisplayName(name)}`);
+  } catch (error) {
+    console.error("Failed to open managed archive", error);
     toast("Could not open archive. The current archive was not changed.");
   }
 }

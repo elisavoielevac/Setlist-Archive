@@ -756,6 +756,68 @@ textarea:focus {
   font-size: 0.875rem;
 }
 
+.manage-archives-dialog-panel {
+  width: min(30rem, 100%);
+}
+
+.manage-archives-list {
+  display: grid;
+  max-height: 18rem;
+  margin-bottom: 0.5rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.manage-archive-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.manage-archive-row:last-child {
+  border-bottom: 0;
+}
+
+.manage-archive-row:hover,
+.manage-archive-row:focus-visible,
+.manage-archive-row.is-selected {
+  background: var(--panel-2);
+  color: var(--accent);
+  outline: none;
+}
+
+.manage-archive-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manage-archive-status {
+  flex-shrink: 0;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--dim);
+  font-size: 0.7rem;
+}
+
+.manage-archives-empty {
+  padding: 0.75rem;
+  color: var(--dim);
+  font-size: 0.875rem;
+}
+
 .confirm-dialog-actions {
   display: flex;
   align-items: center;
