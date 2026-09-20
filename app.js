@@ -68,6 +68,7 @@ function bindEvents() {
   document.querySelector("#selectAllBtn").addEventListener("click", selectAllShows);
   document.querySelector("#clearSelectionBtn").addEventListener("click", clearSelection);
   document.querySelector("#applyBulkBtn").addEventListener("click", applyBulkEdit);
+  document.querySelector("#deleteSelectedBtn").addEventListener("click", deleteSelectedShows);
 
   showList.addEventListener("click", onShowListClick);
   showList.addEventListener("change", onShowListChange);
@@ -533,6 +534,23 @@ function removeShow(id) {
   saveShowsToStorage();
   renderAll();
   toast("Show deleted");
+}
+
+function deleteSelectedShows() {
+  const selectedShows = shows.filter((show) => selectedIds.has(show.id));
+  const count = selectedShows.length;
+  if (!count) return;
+
+  const label = `${count} show${count === 1 ? "" : "s"}`;
+  if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
+
+  const selectedShowIds = new Set(selectedShows.map((show) => show.id));
+  shows = shows.filter((show) => !selectedShowIds.has(show.id));
+  lastSelectedIndex = null;
+  selectedIds.clear();
+  saveShowsToStorage();
+  renderAll();
+  toast(`Deleted ${label}`);
 }
 
 function getSortedIds() {
