@@ -16,11 +16,16 @@ const statsPanel = document.querySelector("#statsPanel");
 const showsBtn = document.querySelector("#tabShowsBtn");
 const statsBtn = document.querySelector("#tabStatsBtn");
 const statsContent = document.querySelector("#statsContent");
+const deleteConfirmDialog = document.querySelector("#deleteConfirmDialog");
+const deleteConfirmMessage = document.querySelector("#deleteConfirmMessage");
+const cancelDeleteBtn = document.querySelector("#cancelDeleteBtn");
+const confirmDeleteBtn = document.querySelector("#confirmDeleteBtn");
 
 let shows = [];
 let selectedIds = new Set();
 let lastSelectedIndex = null;
 let searchDebounce = null;
+let pendingDeleteConfirmation = null;
 
 shows = loadShowsFromStorage();
 bindEvents();
@@ -71,6 +76,11 @@ function bindEvents() {
   document.querySelector("#clearSelectionBtn").addEventListener("click", clearSelection);
   document.querySelector("#applyBulkBtn").addEventListener("click", applyBulkEdit);
   document.querySelector("#deleteSelectedBtn").addEventListener("click", deleteSelectedShows);
+  cancelDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(false));
+  confirmDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(true));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") resolveDeleteConfirmation(false);
+  });
 
   showList.addEventListener("click", onShowListClick);
   showList.addEventListener("change", onShowListChange);
@@ -583,13 +593,13 @@ function removeShow(id) {
   toast("Show deleted");
 }
 
-function deleteSelectedShows() {
+async function deleteSelectedShows() {
   const selectedShows = shows.filter((show) => selectedIds.has(show.id));
   const count = selectedShows.length;
   if (!count) return;
 
   const label = `${count} show${count === 1 ? "" : "s"}`;
-  if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
+  if (!await confirmSelectedDeletion(`Delete ${label}? This cannot be undone.`)) return;
 
   const selectedShowIds = new Set(selectedShows.map((show) => show.id));
   shows = shows.filter((show) => !selectedShowIds.has(show.id));
@@ -598,6 +608,26 @@ function deleteSelectedShows() {
   saveShowsToStorage();
   renderAll();
   toast(`Deleted ${label}`);
+}
+
+function confirmSelectedDeletion(message) {
+  if (!window.__TAURI__) return Promise.resolve(window.confirm(message));
+  if (pendingDeleteConfirmation) return Promise.resolve(false);
+
+  deleteConfirmMessage.textContent = message;
+  deleteConfirmDialog.classList.remove("hidden");
+  confirmDeleteBtn.focus();
+  return new Promise((resolve) => {
+    pendingDeleteConfirmation = resolve;
+  });
+}
+
+function resolveDeleteConfirmation(confirmed) {
+  if (!pendingDeleteConfirmation) return;
+  const resolve = pendingDeleteConfirmation;
+  pendingDeleteConfirmation = null;
+  deleteConfirmDialog.classList.add("hidden");
+  resolve(confirmed);
 }
 
 function getSortedIds() {

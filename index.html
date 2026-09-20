@@ -83,6 +83,15 @@
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="deleteConfirmDialog" class="confirm-dialog hidden" role="alertdialog" aria-modal="true" aria-labelledby="deleteConfirmMessage">
+      <div class="confirm-dialog-panel">
+        <p id="deleteConfirmMessage"></p>
+        <div class="confirm-dialog-actions">
+          <button id="cancelDeleteBtn" type="button" class="text-btn">Cancel</button>
+          <button id="confirmDeleteBtn" type="button" class="danger-btn">Delete</button>
+        </div>
+      </div>
+    </div>
     <script src="app.js"></script>
   </body>
 </html>
