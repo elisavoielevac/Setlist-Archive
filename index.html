@@ -13,20 +13,20 @@
         <p class="lede">
           Drop in your Reaper project files (.rpp) or an exported marker CSV. Every marker becomes a
           song entry you can search across every show you've ever recorded — along with tour, lineup
-          and notes. Create or open a tracker file to start building your archive.
+          and notes. Create or open an archive to start building your collection.
         </p>
       </header>
 
       <div class="tracker-bar">
         <div class="tracker-state">
-          <span class="tracker-label">Tracker</span>
-          <strong id="trackerName">No tracker open</strong>
-          <span id="trackerStatus" class="tracker-status">Create or open a tracker to begin</span>
+          <span class="tracker-label">Archive</span>
+          <strong id="trackerName">No archive open</strong>
+          <span id="trackerStatus" class="tracker-status">Create or open an archive to begin</span>
         </div>
         <div class="tracker-actions">
-          <button id="newTrackerBtn" type="button" class="primary-btn">New Tracker</button>
-          <button id="openTrackerBtn" type="button" class="text-btn">Open Tracker</button>
-          <button id="saveAsTrackerBtn" type="button" class="text-btn">Save Copy As…</button>
+          <button id="newTrackerBtn" type="button" class="primary-btn">New Archive</button>
+          <button id="openTrackerBtn" type="button" class="text-btn">Open Archive</button>
+          <button id="saveAsTrackerBtn" type="button" class="text-btn">Duplicate Archive</button>
         </div>
       </div>
 
@@ -48,7 +48,7 @@
       <div class="section-label">Add a show</div>
       <div id="dropzone" class="dropzone">
         <div id="dzText">
-          <strong>Create or open a tracker first</strong><br />
+          <strong>Create or open an archive first</strong><br />
           then import .rpp or .csv files
         </div>
       </div>
@@ -108,8 +108,9 @@
       <div class="confirm-dialog-panel">
         <p id="trackerNameDialogTitle"></p>
         <p id="trackerNameDialogMessage" class="tracker-name-dialog-message hidden"></p>
-        <label class="tracker-name-dialog-label" for="trackerNameInput">Tracker name</label>
+        <label class="tracker-name-dialog-label" for="trackerNameInput">Archive name</label>
         <input id="trackerNameInput" class="tracker-name-dialog-input" type="text" autocomplete="off" />
+        <div id="archiveList" class="archive-list hidden" role="group" aria-label="Available archives"></div>
         <p id="trackerNameDialogError" class="tracker-name-dialog-error hidden" role="alert"></p>
         <div class="confirm-dialog-actions">
           <button id="cancelTrackerNameBtn" type="button" class="text-btn">Cancel</button>

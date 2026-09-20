@@ -24,7 +24,9 @@ const confirmDeleteBtn = document.querySelector("#confirmDeleteBtn");
 const trackerNameDialog = document.querySelector("#trackerNameDialog");
 const trackerNameDialogTitle = document.querySelector("#trackerNameDialogTitle");
 const trackerNameDialogMessage = document.querySelector("#trackerNameDialogMessage");
+const trackerNameDialogLabel = document.querySelector(".tracker-name-dialog-label");
 const trackerNameInput = document.querySelector("#trackerNameInput");
+const archiveList = document.querySelector("#archiveList");
 const trackerNameDialogError = document.querySelector("#trackerNameDialogError");
 const cancelTrackerNameBtn = document.querySelector("#cancelTrackerNameBtn");
 const confirmTrackerNameBtn = document.querySelector("#confirmTrackerNameBtn");
@@ -128,7 +130,7 @@ function saveShows() {
 
 function requireActiveTracker() {
   if (activeTracker) return true;
-  toast("Create or open a tracker before adding shows");
+  toast("Create or open an archive before adding shows");
   return false;
 }
 
@@ -173,13 +175,13 @@ function clearTrackerSelectionState() {
 
 function renderTrackerState() {
   if (!activeTracker) {
-    trackerNameEl.textContent = "No tracker open";
-    trackerStatusEl.textContent = "Create or open a tracker to begin";
+    trackerNameEl.textContent = "No archive open";
+    trackerStatusEl.textContent = "Create or open an archive to begin";
     saveAsTrackerBtn.disabled = true;
     fileInput.disabled = true;
     dropzone.classList.add("is-disabled");
     dropzone.setAttribute("aria-disabled", "true");
-    dropzoneText.innerHTML = "<strong>Create or open a tracker first</strong><br />then import .rpp or .csv files";
+    dropzoneText.innerHTML = "<strong>Create or open an archive first</strong><br />then import .rpp or .csv files";
     return;
   }
 
@@ -221,7 +223,7 @@ async function waitForActiveTrackerSaves({ allowFailure = false } = {}) {
     if (allowFailure) return false;
     trackerSaveStatus = "failed";
     renderTrackerState();
-    toast("Save failed. The current tracker was not changed.");
+    toast("Save failed. The current archive was not changed.");
     return false;
   }
 }
@@ -240,7 +242,7 @@ async function restoreLastTracker() {
     } catch (clearError) {
       console.error("Failed to clear the invalid tracker preference", clearError);
     }
-    toast("Could not reopen the last tracker. Create or open a tracker.");
+    toast("Could not reopen the last archive. Create or open an archive.");
   }
 }
 
@@ -250,14 +252,57 @@ function requestManagedTrackerName({ title, message = "", defaultName = "", subm
     trackerNameDialogTitle.textContent = title;
     trackerNameDialogMessage.textContent = message;
     trackerNameDialogMessage.classList.toggle("hidden", !message);
+    trackerNameDialogLabel.classList.remove("hidden");
+    trackerNameInput.classList.remove("hidden");
+    archiveList.classList.add("hidden");
+    archiveList.innerHTML = "";
     trackerNameInput.value = defaultName;
     trackerNameDialogError.textContent = "";
     trackerNameDialogError.classList.add("hidden");
     confirmTrackerNameBtn.textContent = submitLabel;
+    confirmTrackerNameBtn.classList.remove("hidden");
     trackerNameDialog.classList.remove("hidden");
     requestAnimationFrame(() => {
       trackerNameInput.focus();
       trackerNameInput.select();
+    });
+  });
+}
+
+function requestManagedArchiveSelection(archiveNames) {
+  return new Promise((resolve) => {
+    pendingTrackerNameDialog = resolve;
+    trackerNameDialogTitle.textContent = "Open Archive";
+    trackerNameDialogMessage.textContent = "";
+    trackerNameDialogMessage.classList.add("hidden");
+    trackerNameDialogLabel.classList.add("hidden");
+    trackerNameInput.classList.add("hidden");
+    trackerNameDialogError.textContent = "";
+    trackerNameDialogError.classList.add("hidden");
+    confirmTrackerNameBtn.classList.add("hidden");
+    archiveList.innerHTML = "";
+
+    if (!archiveNames.length) {
+      const emptyState = document.createElement("div");
+      emptyState.className = "archive-list-empty";
+      emptyState.textContent = "No archives available";
+      archiveList.append(emptyState);
+    } else {
+      archiveNames.forEach((name) => {
+        const archiveButton = document.createElement("button");
+        archiveButton.type = "button";
+        archiveButton.className = "archive-list-item";
+        archiveButton.textContent = trackerDisplayName(name);
+        archiveButton.addEventListener("click", () => resolveTrackerNameDialog(name));
+        archiveList.append(archiveButton);
+      });
+    }
+
+    archiveList.classList.remove("hidden");
+    trackerNameDialog.classList.remove("hidden");
+    requestAnimationFrame(() => {
+      const firstArchiveButton = archiveList.querySelector(".archive-list-item");
+      (firstArchiveButton || cancelTrackerNameBtn).focus();
     });
   });
 }
@@ -284,12 +329,12 @@ function resolveTrackerNameDialog(name) {
 }
 
 function validateManagedTrackerName(name) {
-  if (!name) return "Enter a tracker name.";
-  if (name === "." || name === "..") return 'Tracker name cannot be "." or "..".';
-  if (name.includes("/") || name.includes("\\")) return "Tracker name cannot contain / or \\.";
+  if (!name) return "Enter an archive name.";
+  if (name === "." || name === "..") return 'Archive name cannot be "." or "..".';
+  if (name.includes("/") || name.includes("\\")) return "Archive name cannot contain / or \\.";
 
   const stem = name.replace(/\.setlisttracker$/i, "").trim();
-  if (!stem) return "Enter a tracker name before the .setlisttracker extension.";
+  if (!stem) return "Enter an archive name before the .setlisttracker extension.";
   return "";
 }
 
@@ -300,7 +345,7 @@ async function managedTrackerNameExists(name) {
 
 async function createTracker() {
   const name = await requestManagedTrackerName({
-    title: "New Tracker",
+    title: "New Archive",
     defaultName: "Untitled",
     submitLabel: "Create",
   });
@@ -309,77 +354,63 @@ async function createTracker() {
   const now = Date.now();
   try {
     if (await managedTrackerNameExists(name)) {
-      toast("A tracker with that name already exists");
+      toast("An archive with that name already exists");
       return;
     }
     const tracker = await trackerPersistence.writeManagedTrackerFile(name, [], now, now);
     await activateTracker(name, tracker);
-    toast(`Created ${name}`);
+    toast(`Created ${trackerDisplayName(name)}`);
   } catch (error) {
     console.error("Failed to create tracker", error);
-    toast("Could not create tracker. The current archive was not changed.");
+    toast("Could not create archive. The current archive was not changed.");
   }
 }
 
 async function openTracker() {
   try {
-    const trackerNames = await trackerPersistence.listManagedTrackerFiles();
-    if (!trackerNames.length) {
-      toast("No managed trackers are available to open");
-      return;
-    }
-    const name = await requestManagedTrackerName({
-      title: "Open Tracker",
-      message: `Available trackers:\n${trackerNames.join("\n")}`,
-      defaultName: trackerNames[0],
-      submitLabel: "Open",
-    });
-    if (!name) return;
-    const selectedName = trackerNames.find((trackerName) => trackerName.toLowerCase() === name.toLowerCase());
-    if (!selectedName) {
-      toast("Choose a tracker from the managed library");
-      return;
-    }
+    const archiveNames = await trackerPersistence.listManagedTrackerFiles();
+    const selectedName = await requestManagedArchiveSelection(archiveNames);
+    if (!selectedName) return;
     const tracker = await trackerPersistence.readManagedTrackerFile(selectedName);
     if (!(await waitForActiveTrackerSaves())) return;
     await activateTracker(selectedName, tracker);
-    toast(`Opened ${selectedName}`);
+    toast(`Opened ${trackerDisplayName(selectedName)}`);
   } catch (error) {
     console.error("Failed to open tracker", error);
-    toast("Could not open tracker. The current archive was not changed.");
+    toast("Could not open archive. The current archive was not changed.");
   }
 }
 
 async function saveTrackerAs() {
   if (!activeTracker) {
-    toast("Open or create a tracker before using Save As");
+    toast("Open or create an archive before duplicating it");
     return;
   }
 
   const name = await requestManagedTrackerName({
-    title: "Save Copy As…",
+    title: "Duplicate Archive",
     defaultName: `${trackerDisplayName(activeTracker.name)} copy`,
-    submitLabel: "Save Copy",
+    submitLabel: "Duplicate",
   });
   if (!name) return;
   if (name.toLowerCase() === activeTracker.name.toLowerCase()) {
-    toast("Choose a new tracker file name for Save As");
+    toast("Choose a new archive name to duplicate");
     return;
   }
 
   try {
     if (await managedTrackerNameExists(name)) {
-      toast("A tracker with that name already exists");
+      toast("An archive with that name already exists");
       return;
     }
     await waitForActiveTrackerSaves({ allowFailure: true });
     const now = Date.now();
     const tracker = await trackerPersistence.writeManagedTrackerFile(name, shows, activeTracker.createdAt, now);
     await activateTracker(name, tracker);
-    toast(`Saved copy as ${name}`);
+    toast(`Duplicated ${trackerDisplayName(name)}`);
   } catch (error) {
     console.error("Failed to save tracker copy", error);
-    toast("Could not save tracker copy. The current tracker was not changed.");
+    toast("Could not duplicate archive. The current archive was not changed.");
   }
 }
 
@@ -746,7 +777,7 @@ function renderShows() {
   if (!shows.length) {
     showList.innerHTML = activeTracker
       ? `<div class="empty">No shows yet — drop a Reaper project or marker CSV above to get started.</div>`
-      : `<div class="empty">Create a new tracker or open an existing tracker to get started.</div>`;
+      : `<div class="empty">Create a new archive or open an existing archive to get started.</div>`;
     return;
   }
 
@@ -1129,7 +1160,7 @@ function renderStats() {
   if (!shows.length) {
     statsContent.innerHTML = activeTracker
       ? `<div class="empty">Add some shows to see stats.</div>`
-      : `<div class="empty">Open a tracker to see stats.</div>`;
+      : `<div class="empty">Open an archive to see stats.</div>`;
     return;
   }
 

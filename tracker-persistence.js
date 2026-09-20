@@ -6,19 +6,19 @@
 
   function validateTrackerData(data) {
     if (!data || typeof data !== "object" || Array.isArray(data)) {
-      throw new TypeError("Tracker data must be an object");
+      throw new TypeError("Archive data must be an object");
     }
     if (data.format !== TRACKER_FORMAT) {
-      throw new Error(`Unsupported tracker format: ${String(data.format)}`);
+      throw new Error(`Unsupported archive format: ${String(data.format)}`);
     }
     if (data.schemaVersion !== TRACKER_SCHEMA_VERSION) {
-      throw new Error(`Unsupported tracker schema version: ${String(data.schemaVersion)}`);
+      throw new Error(`Unsupported archive schema version: ${String(data.schemaVersion)}`);
     }
     if (!Number.isFinite(data.createdAt) || !Number.isFinite(data.updatedAt)) {
-      throw new TypeError("Tracker timestamps must be finite numbers");
+      throw new TypeError("Archive timestamps must be finite numbers");
     }
     if (!Array.isArray(data.shows)) {
-      throw new TypeError("Tracker shows must be an array");
+      throw new TypeError("Archive shows must be an array");
     }
     return data;
   }
@@ -28,7 +28,7 @@
     try {
       data = JSON.parse(contents);
     } catch (error) {
-      throw new Error(`Tracker file is not valid JSON: ${error.message}`);
+      throw new Error(`Archive file is not valid JSON: ${error.message}`);
     }
     return validateTrackerData(data);
   }
@@ -47,7 +47,7 @@
 
   function tauriInvoke() {
     const invoke = window.__TAURI__?.core?.invoke;
-    if (!invoke) throw new Error("Tracker files require the Tauri desktop app");
+    if (!invoke) throw new Error("Archive files require the Tauri desktop app");
     return invoke;
   }
 
