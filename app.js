@@ -157,6 +157,10 @@ function trackerFileName(path) {
   return path.split(/[\\/]/).pop() || path;
 }
 
+function trackerDisplayName(path) {
+  return trackerFileName(path).replace(/\.setlisttracker$/i, "");
+}
+
 function ensureTrackerExtension(path) {
   return /\.setlisttracker$/i.test(path) ? path : `${path}.setlisttracker`;
 }
@@ -177,7 +181,7 @@ function renderTrackerState() {
     return;
   }
 
-  trackerNameEl.textContent = trackerFileName(activeTracker.path);
+  trackerNameEl.textContent = trackerDisplayName(activeTracker.path);
   trackerStatusEl.textContent = {
     saving: "Saving…",
     saved: "Saved",
