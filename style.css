@@ -825,6 +825,14 @@ textarea:focus {
   gap: 0.875rem;
 }
 
+.manage-archives-actions {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 @media (min-width: 640px) {
   .bulk-fields {
     grid-template-columns: 1fr 1fr 1fr;

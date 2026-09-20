@@ -40,6 +40,10 @@ const manageArchivesDialog = document.querySelector("#manageArchivesDialog");
 const manageArchivesList = document.querySelector("#manageArchivesList");
 const cancelManageArchivesBtn = document.querySelector("#cancelManageArchivesBtn");
 const openManagedArchiveBtn = document.querySelector("#openManagedArchiveBtn");
+const renameManagedArchiveBtn = document.querySelector("#renameManagedArchiveBtn");
+const duplicateManagedArchiveBtn = document.querySelector("#duplicateManagedArchiveBtn");
+const deleteManagedArchiveBtn = document.querySelector("#deleteManagedArchiveBtn");
+const revealManagedArchiveBtn = document.querySelector("#revealManagedArchiveBtn");
 
 let shows = [];
 let selectedIds = new Set();
@@ -114,6 +118,10 @@ function bindEvents() {
   saveAsTrackerBtn.addEventListener("click", saveTrackerAs);
   cancelManageArchivesBtn.addEventListener("click", closeManageArchives);
   openManagedArchiveBtn.addEventListener("click", openSelectedManagedArchive);
+  renameManagedArchiveBtn.addEventListener("click", renameSelectedManagedArchive);
+  duplicateManagedArchiveBtn.addEventListener("click", duplicateSelectedManagedArchive);
+  deleteManagedArchiveBtn.addEventListener("click", deleteSelectedManagedArchive);
+  revealManagedArchiveBtn.addEventListener("click", revealSelectedManagedArchive);
   cancelDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(false));
   confirmDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(true));
   cancelTrackerNameBtn.addEventListener("click", () => resolveTrackerNameDialog(null));
@@ -451,7 +459,12 @@ function renderManageArchives(archiveNames) {
     });
   }
 
-  openManagedArchiveBtn.disabled = !selectedManagedArchiveName;
+  const hasSelection = Boolean(selectedManagedArchiveName);
+  openManagedArchiveBtn.disabled = !hasSelection;
+  renameManagedArchiveBtn.disabled = !hasSelection;
+  duplicateManagedArchiveBtn.disabled = !hasSelection;
+  deleteManagedArchiveBtn.disabled = !hasSelection;
+  revealManagedArchiveBtn.disabled = !hasSelection;
 }
 
 function closeManageArchives() {
@@ -471,6 +484,130 @@ async function openSelectedManagedArchive() {
   } catch (error) {
     console.error("Failed to open managed archive", error);
     toast("Could not open archive. The current archive was not changed.");
+  }
+}
+
+async function renameSelectedManagedArchive() {
+  const oldName = selectedManagedArchiveName;
+  if (!oldName) return;
+
+  const newName = await requestManagedTrackerName({
+    title: "Rename Archive",
+    defaultName: trackerDisplayName(oldName),
+    submitLabel: "Rename",
+  });
+  if (!newName || newName.toLowerCase() === oldName.toLowerCase()) return;
+
+  try {
+    if (oldName === activeTracker?.name && !(await waitForActiveTrackerSaves())) return;
+    if (await managedTrackerNameExists(newName)) {
+      toast("An archive with that name already exists");
+      return;
+    }
+
+    const renamedName = await trackerPersistence.renameManagedTrackerFile(oldName, newName);
+    let preferenceError = false;
+    if (activeTracker?.name === oldName) {
+      activeTracker.name = renamedName;
+      renderAll();
+      try {
+        await trackerPersistence.writeLastTrackerName(renamedName);
+      } catch (error) {
+        console.error("Failed to remember the renamed active archive", error);
+        preferenceError = true;
+      }
+    }
+    selectedManagedArchiveName = renamedName;
+    const archiveNames = await trackerPersistence.listManagedTrackerFiles();
+    renderManageArchives(archiveNames);
+    toast(preferenceError
+      ? "Archive renamed, but the active preference could not be updated"
+      : `Renamed to ${trackerDisplayName(renamedName)}`);
+  } catch (error) {
+    console.error("Failed to rename managed archive", error);
+    toast("Could not rename archive");
+  }
+}
+
+async function duplicateSelectedManagedArchive() {
+  const sourceName = selectedManagedArchiveName;
+  if (!sourceName) return;
+
+  const name = await requestManagedTrackerName({
+    title: "Duplicate Archive",
+    defaultName: `${trackerDisplayName(sourceName)} copy`,
+    submitLabel: "Duplicate",
+  });
+  if (!name || name.toLowerCase() === sourceName.toLowerCase()) {
+    if (name) toast("Choose a new archive name to duplicate");
+    return;
+  }
+
+  try {
+    if (sourceName === activeTracker?.name && !(await waitForActiveTrackerSaves())) return;
+    if (await managedTrackerNameExists(name)) {
+      toast("An archive with that name already exists");
+      return;
+    }
+
+    const source = sourceName === activeTracker?.name
+      ? { shows, createdAt: activeTracker.createdAt }
+      : await trackerPersistence.readManagedTrackerFile(sourceName);
+    const now = Date.now();
+    const tracker = await trackerPersistence.writeManagedTrackerFile(name, source.shows, source.createdAt, now);
+    await activateTracker(name, tracker);
+    selectedManagedArchiveName = name;
+    const archiveNames = await trackerPersistence.listManagedTrackerFiles();
+    renderManageArchives(archiveNames);
+    toast(`Duplicated ${trackerDisplayName(name)}`);
+  } catch (error) {
+    console.error("Failed to duplicate managed archive", error);
+    toast("Could not duplicate archive. The current archive was not changed.");
+  }
+}
+
+async function deleteSelectedManagedArchive() {
+  const name = selectedManagedArchiveName;
+  if (!name) return;
+  if (!await confirmSelectedDeletion(`Delete ${trackerDisplayName(name)}? This cannot be undone.`)) return;
+
+  try {
+    if (name === activeTracker?.name && !(await waitForActiveTrackerSaves())) return;
+    await trackerPersistence.deleteManagedTrackerFile(name);
+
+    if (name === activeTracker?.name) {
+      activeTracker = null;
+      shows = [];
+      trackerSaveRevision += 1;
+      trackerSaveStatus = "saved";
+      clearTrackerSelectionState();
+      renderAll();
+      try {
+        await trackerPersistence.clearLastTrackerName();
+      } catch (error) {
+        console.error("Failed to clear the deleted archive preference", error);
+      }
+    }
+
+    selectedManagedArchiveName = null;
+    const archiveNames = await trackerPersistence.listManagedTrackerFiles();
+    renderManageArchives(archiveNames);
+    toast(`Deleted ${trackerDisplayName(name)}`);
+  } catch (error) {
+    console.error("Failed to delete managed archive", error);
+    toast("Could not delete archive");
+  }
+}
+
+async function revealSelectedManagedArchive() {
+  const name = selectedManagedArchiveName;
+  if (!name) return;
+
+  try {
+    await trackerPersistence.revealManagedTrackerFile(name);
+  } catch (error) {
+    console.error("Failed to reveal managed archive", error);
+    toast("Could not reveal archive in Finder");
   }
 }
 
