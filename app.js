@@ -21,8 +21,14 @@ const deleteConfirmDialog = document.querySelector("#deleteConfirmDialog");
 const deleteConfirmMessage = document.querySelector("#deleteConfirmMessage");
 const cancelDeleteBtn = document.querySelector("#cancelDeleteBtn");
 const confirmDeleteBtn = document.querySelector("#confirmDeleteBtn");
+const trackerNameDialog = document.querySelector("#trackerNameDialog");
+const trackerNameDialogTitle = document.querySelector("#trackerNameDialogTitle");
+const trackerNameDialogMessage = document.querySelector("#trackerNameDialogMessage");
+const trackerNameInput = document.querySelector("#trackerNameInput");
+const trackerNameDialogError = document.querySelector("#trackerNameDialogError");
+const cancelTrackerNameBtn = document.querySelector("#cancelTrackerNameBtn");
+const confirmTrackerNameBtn = document.querySelector("#confirmTrackerNameBtn");
 const trackerNameEl = document.querySelector("#trackerName");
-const trackerFolderEl = document.querySelector("#trackerFolder");
 const trackerStatusEl = document.querySelector("#trackerStatus");
 const newTrackerBtn = document.querySelector("#newTrackerBtn");
 const openTrackerBtn = document.querySelector("#openTrackerBtn");
@@ -33,14 +39,13 @@ let selectedIds = new Set();
 let lastSelectedIndex = null;
 let searchDebounce = null;
 let pendingDeleteConfirmation = null;
+let pendingTrackerNameDialog = null;
 let activeTracker = null;
 let trackerSaveStatus = "saved";
 let trackerSaveRevision = 0;
-let homeDirectory = null;
 
 bindEvents();
 renderAll();
-void loadHomeDirectory();
 void restoreLastTracker();
 
 function bindEvents() {
@@ -100,8 +105,16 @@ function bindEvents() {
   saveAsTrackerBtn.addEventListener("click", saveTrackerAs);
   cancelDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(false));
   confirmDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(true));
+  cancelTrackerNameBtn.addEventListener("click", () => resolveTrackerNameDialog(null));
+  confirmTrackerNameBtn.addEventListener("click", submitTrackerNameDialog);
+  trackerNameInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") submitTrackerNameDialog();
+  });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") resolveDeleteConfirmation(false);
+    if (event.key === "Escape") {
+      resolveDeleteConfirmation(false);
+      resolveTrackerNameDialog(null);
+    }
   });
 
   showList.addEventListener("click", onShowListClick);
@@ -125,7 +138,7 @@ function queueActiveTrackerSave() {
   trackerSaveStatus = "saving";
   renderTrackerState();
 
-  trackerPersistence.queueTrackerFileWrite(tracker.path, shows, tracker.createdAt).then(
+  trackerPersistence.queueManagedTrackerFileWrite(tracker.name, shows, tracker.createdAt).then(
     () => {
       if (activeTracker === tracker && saveRevision === trackerSaveRevision) {
         trackerSaveStatus = "saved";
@@ -142,53 +155,12 @@ function queueActiveTrackerSave() {
   );
 }
 
-function trackerDialogApi() {
-  const dialog = window.__TAURI__?.dialog;
-  if (!dialog?.open || !dialog.save || !window.__TAURI__?.core?.invoke) {
-    toast("Tracker files require the Tauri desktop app");
-    return null;
-  }
-  return dialog;
+function trackerDisplayName(name) {
+  return name.replace(/\.setlisttracker$/i, "");
 }
 
-function trackerFileName(path) {
-  return path.split(/[\\/]/).pop() || path;
-}
-
-function trackerDisplayName(path) {
-  return trackerFileName(path).replace(/\.setlisttracker$/i, "");
-}
-
-function trackerParentFolder(path) {
-  const separatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return separatorIndex > 0 ? path.slice(0, separatorIndex) : "";
-}
-
-function compactTrackerFolder(path) {
-  const folder = trackerParentFolder(path);
-  if (!folder || !homeDirectory) return folder;
-
-  const normalizedHome = homeDirectory.replace(/[\\/]$/, "");
-  const separator = folder.includes("\\") ? "\\" : "/";
-  if (folder === normalizedHome) return "~";
-  if (folder.startsWith(`${normalizedHome}${separator}`)) return `~${folder.slice(normalizedHome.length)}`;
-  return folder;
-}
-
-async function loadHomeDirectory() {
-  const homeDir = window.__TAURI__?.path?.homeDir;
-  if (!homeDir) return;
-
-  try {
-    homeDirectory = await homeDir();
-    renderTrackerState();
-  } catch (error) {
-    console.error("Failed to resolve the home directory", error);
-  }
-}
-
-function ensureTrackerExtension(path) {
-  return /\.setlisttracker$/i.test(path) ? path : `${path}.setlisttracker`;
+function ensureTrackerExtension(name) {
+  return /\.setlisttracker$/i.test(name) ? name : `${name}.setlisttracker`;
 }
 
 function clearTrackerSelectionState() {
@@ -202,8 +174,6 @@ function clearTrackerSelectionState() {
 function renderTrackerState() {
   if (!activeTracker) {
     trackerNameEl.textContent = "No tracker open";
-    trackerFolderEl.textContent = "";
-    trackerFolderEl.classList.add("hidden");
     trackerStatusEl.textContent = "Create or open a tracker to begin";
     saveAsTrackerBtn.disabled = true;
     fileInput.disabled = true;
@@ -213,9 +183,7 @@ function renderTrackerState() {
     return;
   }
 
-  trackerNameEl.textContent = trackerDisplayName(activeTracker.path);
-  trackerFolderEl.textContent = compactTrackerFolder(activeTracker.path);
-  trackerFolderEl.classList.toggle("hidden", !trackerFolderEl.textContent);
+  trackerNameEl.textContent = trackerDisplayName(activeTracker.name);
   trackerStatusEl.textContent = {
     saving: "Saving…",
     saved: "Saved",
@@ -228,8 +196,8 @@ function renderTrackerState() {
   dropzoneText.innerHTML = "<strong>Drop .rpp or .csv files here</strong><br />or click to choose files";
 }
 
-async function activateTracker(path, tracker) {
-  activeTracker = { path, createdAt: tracker.createdAt };
+async function activateTracker(name, tracker) {
+  activeTracker = { name, createdAt: tracker.createdAt };
   trackerSaveStatus = "saved";
   trackerSaveRevision += 1;
   trackerPersistence.clearTrackerWriteError();
@@ -237,7 +205,7 @@ async function activateTracker(path, tracker) {
   clearTrackerSelectionState();
   renderAll();
   try {
-    await trackerPersistence.writeLastTrackerPath(path);
+    await trackerPersistence.writeLastTrackerName(name);
   } catch (error) {
     console.error("Failed to remember the active tracker", error);
   }
@@ -261,14 +229,14 @@ async function waitForActiveTrackerSaves({ allowFailure = false } = {}) {
 async function restoreLastTracker() {
   if (!window.__TAURI__?.core?.invoke) return;
   try {
-    const path = await trackerPersistence.readLastTrackerPath();
-    if (!path) return;
-    const tracker = await trackerPersistence.readTrackerFile(path);
-    await activateTracker(path, tracker);
+    const name = await trackerPersistence.readLastTrackerName();
+    if (!name) return;
+    const tracker = await trackerPersistence.readManagedTrackerFile(name);
+    await activateTracker(name, tracker);
   } catch (error) {
     console.error("Failed to reopen the last tracker", error);
     try {
-      await trackerPersistence.clearLastTrackerPath();
+      await trackerPersistence.clearLastTrackerName();
     } catch (clearError) {
       console.error("Failed to clear the invalid tracker preference", clearError);
     }
@@ -276,27 +244,77 @@ async function restoreLastTracker() {
   }
 }
 
-async function chooseTrackerSavePath(title) {
-  const dialog = trackerDialogApi();
-  if (!dialog) return null;
-
-  const path = await dialog.save({
-    title,
-    defaultPath: "Untitled.setlisttracker",
-    filters: [{ name: "Reaper Setlist Tracker", extensions: ["setlisttracker"] }],
+function requestManagedTrackerName({ title, message = "", defaultName = "", submitLabel }) {
+  return new Promise((resolve) => {
+    pendingTrackerNameDialog = resolve;
+    trackerNameDialogTitle.textContent = title;
+    trackerNameDialogMessage.textContent = message;
+    trackerNameDialogMessage.classList.toggle("hidden", !message);
+    trackerNameInput.value = defaultName;
+    trackerNameDialogError.textContent = "";
+    trackerNameDialogError.classList.add("hidden");
+    confirmTrackerNameBtn.textContent = submitLabel;
+    trackerNameDialog.classList.remove("hidden");
+    requestAnimationFrame(() => {
+      trackerNameInput.focus();
+      trackerNameInput.select();
+    });
   });
-  return path ? ensureTrackerExtension(path) : null;
+}
+
+function submitTrackerNameDialog() {
+  const name = trackerNameInput.value.trim();
+  const validationError = validateManagedTrackerName(name);
+  if (validationError) {
+    trackerNameDialogError.textContent = validationError;
+    trackerNameDialogError.classList.remove("hidden");
+    trackerNameInput.focus();
+    return;
+  }
+  resolveTrackerNameDialog(ensureTrackerExtension(name));
+}
+
+function resolveTrackerNameDialog(name) {
+  const resolve = pendingTrackerNameDialog;
+  if (!resolve) return;
+
+  pendingTrackerNameDialog = null;
+  trackerNameDialog.classList.add("hidden");
+  resolve(name);
+}
+
+function validateManagedTrackerName(name) {
+  if (!name) return "Enter a tracker name.";
+  if (name === "." || name === "..") return 'Tracker name cannot be "." or "..".';
+  if (name.includes("/") || name.includes("\\")) return "Tracker name cannot contain / or \\.";
+
+  const stem = name.replace(/\.setlisttracker$/i, "").trim();
+  if (!stem) return "Enter a tracker name before the .setlisttracker extension.";
+  return "";
+}
+
+async function managedTrackerNameExists(name) {
+  const trackerNames = await trackerPersistence.listManagedTrackerFiles();
+  return trackerNames.some((existingName) => existingName.toLowerCase() === name.toLowerCase());
 }
 
 async function createTracker() {
-  const path = await chooseTrackerSavePath("New Reaper Setlist Tracker");
-  if (!path || !(await waitForActiveTrackerSaves())) return;
+  const name = await requestManagedTrackerName({
+    title: "New Tracker",
+    defaultName: "Untitled",
+    submitLabel: "Create",
+  });
+  if (!name || !(await waitForActiveTrackerSaves())) return;
 
   const now = Date.now();
   try {
-    const tracker = await trackerPersistence.writeTrackerFile(path, [], now, now);
-    await activateTracker(path, tracker);
-    toast(`Created ${trackerFileName(path)}`);
+    if (await managedTrackerNameExists(name)) {
+      toast("A tracker with that name already exists");
+      return;
+    }
+    const tracker = await trackerPersistence.writeManagedTrackerFile(name, [], now, now);
+    await activateTracker(name, tracker);
+    toast(`Created ${name}`);
   } catch (error) {
     console.error("Failed to create tracker", error);
     toast("Could not create tracker. The current archive was not changed.");
@@ -304,22 +322,28 @@ async function createTracker() {
 }
 
 async function openTracker() {
-  const dialog = trackerDialogApi();
-  if (!dialog) return;
-
-  const path = await dialog.open({
-    title: "Open Reaper Setlist Tracker",
-    multiple: false,
-    directory: false,
-    filters: [{ name: "Reaper Setlist Tracker", extensions: ["setlisttracker"] }],
-  });
-  if (!path || Array.isArray(path)) return;
-
   try {
-    const tracker = await trackerPersistence.readTrackerFile(path);
+    const trackerNames = await trackerPersistence.listManagedTrackerFiles();
+    if (!trackerNames.length) {
+      toast("No managed trackers are available to open");
+      return;
+    }
+    const name = await requestManagedTrackerName({
+      title: "Open Tracker",
+      message: `Available trackers:\n${trackerNames.join("\n")}`,
+      defaultName: trackerNames[0],
+      submitLabel: "Open",
+    });
+    if (!name) return;
+    const selectedName = trackerNames.find((trackerName) => trackerName.toLowerCase() === name.toLowerCase());
+    if (!selectedName) {
+      toast("Choose a tracker from the managed library");
+      return;
+    }
+    const tracker = await trackerPersistence.readManagedTrackerFile(selectedName);
     if (!(await waitForActiveTrackerSaves())) return;
-    await activateTracker(path, tracker);
-    toast(`Opened ${trackerFileName(path)}`);
+    await activateTracker(selectedName, tracker);
+    toast(`Opened ${selectedName}`);
   } catch (error) {
     console.error("Failed to open tracker", error);
     toast("Could not open tracker. The current archive was not changed.");
@@ -332,19 +356,27 @@ async function saveTrackerAs() {
     return;
   }
 
-  const path = await chooseTrackerSavePath("Save Reaper Setlist Tracker As");
-  if (!path) return;
-  if (path === activeTracker.path) {
+  const name = await requestManagedTrackerName({
+    title: "Save Copy As…",
+    defaultName: `${trackerDisplayName(activeTracker.name)} copy`,
+    submitLabel: "Save Copy",
+  });
+  if (!name) return;
+  if (name.toLowerCase() === activeTracker.name.toLowerCase()) {
     toast("Choose a new tracker file name for Save As");
     return;
   }
 
   try {
+    if (await managedTrackerNameExists(name)) {
+      toast("A tracker with that name already exists");
+      return;
+    }
     await waitForActiveTrackerSaves({ allowFailure: true });
     const now = Date.now();
-    const tracker = await trackerPersistence.writeTrackerFile(path, shows, activeTracker.createdAt, now);
-    await activateTracker(path, tracker);
-    toast(`Saved copy as ${trackerFileName(path)}`);
+    const tracker = await trackerPersistence.writeManagedTrackerFile(name, shows, activeTracker.createdAt, now);
+    await activateTracker(name, tracker);
+    toast(`Saved copy as ${name}`);
   } catch (error) {
     console.error("Failed to save tracker copy", error);
     toast("Could not save tracker copy. The current tracker was not changed.");

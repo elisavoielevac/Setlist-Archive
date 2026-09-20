@@ -19,13 +19,8 @@
 
       <div class="tracker-bar">
         <div class="tracker-state">
-          <div class="tracker-details">
-            <div class="tracker-name-row">
-              <span class="tracker-label">Tracker</span>
-              <strong id="trackerName">No tracker open</strong>
-            </div>
-            <span id="trackerFolder" class="tracker-folder hidden"></span>
-          </div>
+          <span class="tracker-label">Tracker</span>
+          <strong id="trackerName">No tracker open</strong>
           <span id="trackerStatus" class="tracker-status">Create or open a tracker to begin</span>
         </div>
         <div class="tracker-actions">
@@ -106,6 +101,19 @@
         <div class="confirm-dialog-actions">
           <button id="cancelDeleteBtn" type="button" class="text-btn">Cancel</button>
           <button id="confirmDeleteBtn" type="button" class="danger-btn">Delete</button>
+        </div>
+      </div>
+    </div>
+    <div id="trackerNameDialog" class="confirm-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="trackerNameDialogTitle">
+      <div class="confirm-dialog-panel">
+        <p id="trackerNameDialogTitle"></p>
+        <p id="trackerNameDialogMessage" class="tracker-name-dialog-message hidden"></p>
+        <label class="tracker-name-dialog-label" for="trackerNameInput">Tracker name</label>
+        <input id="trackerNameInput" class="tracker-name-dialog-input" type="text" autocomplete="off" />
+        <p id="trackerNameDialogError" class="tracker-name-dialog-error hidden" role="alert"></p>
+        <div class="confirm-dialog-actions">
+          <button id="cancelTrackerNameBtn" type="button" class="text-btn">Cancel</button>
+          <button id="confirmTrackerNameBtn" type="button" class="primary-btn">Create</button>
         </div>
       </div>
     </div>

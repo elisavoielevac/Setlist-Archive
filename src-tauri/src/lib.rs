@@ -31,31 +31,53 @@ fn write_tracker_file_atomic(path: String, contents: String) -> Result<(), Strin
 }
 
 #[tauri::command]
+fn read_managed_tracker_file(app: AppHandle, name: String) -> Result<String, String> {
+    let directory = managed_trackers_dir(&app)?;
+    read_managed_tracker_file_in_dir(&directory, &name)
+}
+
+#[tauri::command]
+fn write_managed_tracker_file(
+    app: AppHandle,
+    name: String,
+    contents: String,
+) -> Result<(), String> {
+    let directory = managed_trackers_dir(&app)?;
+    write_managed_tracker_file_in_dir(&directory, &name, contents.as_bytes())
+}
+
+#[tauri::command]
 fn list_managed_tracker_files(app: AppHandle) -> Result<Vec<String>, String> {
     let directory = managed_trackers_dir(&app)?;
     list_managed_tracker_files_in_dir(&directory).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-fn read_last_tracker_path(app: AppHandle) -> Result<Option<String>, String> {
-    let path = last_tracker_preference_path(&app)?;
+fn read_last_tracker_name(app: AppHandle) -> Result<Option<String>, String> {
+    managed_trackers_dir(&app)?;
+    if let Err(error) = clear_legacy_last_tracker_path(&app) {
+        eprintln!("Failed to clear legacy last-tracker-path preference: {error}");
+    }
+
+    let path = last_tracker_name_preference_path(&app)?;
     match fs::read_to_string(path) {
-        Ok(path) if path.is_empty() => Ok(None),
-        Ok(path) => Ok(Some(path)),
+        Ok(name) if name.is_empty() => Ok(None),
+        Ok(name) => Ok(Some(name)),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.to_string()),
     }
 }
 
 #[tauri::command]
-fn write_last_tracker_path(app: AppHandle, path: String) -> Result<(), String> {
-    let preference_path = last_tracker_preference_path(&app)?;
-    write_file_atomically(&preference_path, path.as_bytes()).map_err(|error| error.to_string())
+fn write_last_tracker_name(app: AppHandle, name: String) -> Result<(), String> {
+    let preference_path = last_tracker_name_preference_path(&app)?;
+    let name = normalize_managed_tracker_name(&name)?;
+    write_file_atomically(&preference_path, name.as_bytes()).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-fn clear_last_tracker_path(app: AppHandle) -> Result<(), String> {
-    let path = last_tracker_preference_path(&app)?;
+fn clear_last_tracker_name(app: AppHandle) -> Result<(), String> {
+    let path = last_tracker_name_preference_path(&app)?;
     match fs::remove_file(path) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
@@ -63,20 +85,30 @@ fn clear_last_tracker_path(app: AppHandle) -> Result<(), String> {
     }
 }
 
-fn last_tracker_preference_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
-    let app_data_dir = app
+fn app_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let directory = app
         .path()
         .app_data_dir()
         .map_err(|error| error.to_string())?;
-    fs::create_dir_all(&app_data_dir).map_err(|error| error.to_string())?;
-    Ok(app_data_dir.join("last-tracker-path"))
+    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    Ok(directory)
+}
+
+fn last_tracker_name_preference_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app_data_dir(app)?.join("last-tracker-name"))
+}
+
+fn clear_legacy_last_tracker_path(app: &AppHandle) -> Result<(), String> {
+    let path = app_data_dir(app)?.join("last-tracker-path");
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.to_string()),
+    }
 }
 
 fn managed_trackers_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
+    let app_data_dir = app_data_dir(app)?;
     managed_trackers_dir_from_app_data(&app_data_dir).map_err(|error| error.to_string())
 }
 
@@ -120,6 +152,20 @@ fn resolve_managed_tracker_path(trackers_dir: &Path, name: &str) -> Result<PathB
         return Err("Managed tracker path must remain inside the Trackers directory".into());
     }
     Ok(path)
+}
+
+fn read_managed_tracker_file_in_dir(trackers_dir: &Path, name: &str) -> Result<String, String> {
+    let path = resolve_managed_tracker_path(trackers_dir, name)?;
+    fs::read_to_string(path).map_err(|error| error.to_string())
+}
+
+fn write_managed_tracker_file_in_dir(
+    trackers_dir: &Path,
+    name: &str,
+    contents: &[u8],
+) -> Result<(), String> {
+    let path = resolve_managed_tracker_path(trackers_dir, name)?;
+    write_file_atomically(&path, contents).map_err(|error| error.to_string())
 }
 
 fn has_tracker_file_extension(name: &str) -> bool {
@@ -205,10 +251,12 @@ pub fn run() {
             read_text_file,
             read_tracker_file,
             write_tracker_file_atomic,
+            read_managed_tracker_file,
+            write_managed_tracker_file,
             list_managed_tracker_files,
-            read_last_tracker_path,
-            write_last_tracker_path,
-            clear_last_tracker_path
+            read_last_tracker_name,
+            write_last_tracker_name,
+            clear_last_tracker_name
         ])
         .run(tauri::generate_context!())
         .expect("error while running Reaper Setlist Tracker");
@@ -218,7 +266,8 @@ pub fn run() {
 mod tests {
     use super::{
         list_managed_tracker_files_in_dir, managed_trackers_dir_from_app_data,
-        normalize_managed_tracker_name, resolve_managed_tracker_path, write_file_atomically,
+        normalize_managed_tracker_name, read_managed_tracker_file_in_dir,
+        resolve_managed_tracker_path, write_file_atomically, write_managed_tracker_file_in_dir,
     };
     use std::{
         fs, process,
@@ -312,6 +361,27 @@ mod tests {
                 "Zeta.setlisttracker"
             ]
         );
+
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn reads_and_writes_managed_trackers_by_filename() {
+        let directory = unique_temp_directory("managed-tracker-read-write");
+
+        write_managed_tracker_file_in_dir(&directory, "LVDN", b"first contents").unwrap();
+        assert_eq!(
+            read_managed_tracker_file_in_dir(&directory, "LVDN.setlisttracker").unwrap(),
+            "first contents"
+        );
+
+        write_managed_tracker_file_in_dir(&directory, "LVDN.setlisttracker", b"updated contents")
+            .unwrap();
+        assert_eq!(
+            read_managed_tracker_file_in_dir(&directory, "LVDN").unwrap(),
+            "updated contents"
+        );
+        assert!(read_managed_tracker_file_in_dir(&directory, "../outside").is_err());
 
         fs::remove_dir_all(directory).unwrap();
     }

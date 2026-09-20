@@ -117,30 +117,10 @@ h1 {
   min-width: 0;
 }
 
-.tracker-details {
-  display: grid;
-  gap: 0.125rem;
-  min-width: 0;
-}
-
-.tracker-name-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
 .tracker-label,
-.tracker-status,
-.tracker-folder {
+.tracker-status {
   color: var(--dim);
   font-size: 0.75rem;
-}
-
-.tracker-folder {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 #trackerName {
@@ -708,6 +688,34 @@ textarea:focus {
 .confirm-dialog-panel p {
   margin: 0 0 1rem;
   font-size: 0.875rem;
+}
+
+.tracker-name-dialog-message {
+  color: var(--dim);
+  white-space: pre-line;
+}
+
+.tracker-name-dialog-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--dim);
+  font-size: 0.75rem;
+}
+
+.tracker-name-dialog-input {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  padding: 0.4rem 0.65rem;
+}
+
+.tracker-name-dialog-error {
+  color: #ff7878;
 }
 
 .confirm-dialog-actions {

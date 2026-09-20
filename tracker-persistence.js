@@ -60,9 +60,20 @@
     return tauriInvoke()("list_managed_tracker_files");
   }
 
+  async function readManagedTrackerFile(name) {
+    const contents = await tauriInvoke()("read_managed_tracker_file", { name });
+    return parseTrackerFile(contents);
+  }
+
   async function writeTrackerFile(path, shows, createdAt, updatedAt) {
     const contents = serializeTrackerFile(shows, createdAt, updatedAt);
     await tauriInvoke()("write_tracker_file_atomic", { path, contents });
+    return parseTrackerFile(contents);
+  }
+
+  async function writeManagedTrackerFile(name, shows, createdAt, updatedAt) {
+    const contents = serializeTrackerFile(shows, createdAt, updatedAt);
+    await tauriInvoke()("write_managed_tracker_file", { name, contents });
     return parseTrackerFile(contents);
   }
 
@@ -70,6 +81,24 @@
     const contents = serializeTrackerFile(shows, createdAt, updatedAt);
     const write = trackerWriteQueue.then(async () => {
       await tauriInvoke()("write_tracker_file_atomic", { path, contents });
+      return parseTrackerFile(contents);
+    });
+
+    trackerWriteQueue = write.then(
+      () => {
+        trackerWriteError = null;
+      },
+      (error) => {
+        trackerWriteError = error;
+      },
+    );
+    return write;
+  }
+
+  function queueManagedTrackerFileWrite(name, shows, createdAt, updatedAt = Date.now()) {
+    const contents = serializeTrackerFile(shows, createdAt, updatedAt);
+    const write = trackerWriteQueue.then(async () => {
+      await tauriInvoke()("write_managed_tracker_file", { name, contents });
       return parseTrackerFile(contents);
     });
 
@@ -93,16 +122,16 @@
     trackerWriteError = null;
   }
 
-  async function readLastTrackerPath() {
-    return tauriInvoke()("read_last_tracker_path");
+  async function readLastTrackerName() {
+    return tauriInvoke()("read_last_tracker_name");
   }
 
-  async function writeLastTrackerPath(path) {
-    await tauriInvoke()("write_last_tracker_path", { path });
+  async function writeLastTrackerName(name) {
+    await tauriInvoke()("write_last_tracker_name", { name });
   }
 
-  async function clearLastTrackerPath() {
-    await tauriInvoke()("clear_last_tracker_path");
+  async function clearLastTrackerName() {
+    await tauriInvoke()("clear_last_tracker_name");
   }
 
   window.trackerPersistence = {
@@ -111,12 +140,15 @@
     serializeTrackerFile,
     readTrackerFile,
     listManagedTrackerFiles,
+    readManagedTrackerFile,
     writeTrackerFile,
+    writeManagedTrackerFile,
     queueTrackerFileWrite,
+    queueManagedTrackerFileWrite,
     waitForTrackerFileWrites,
     clearTrackerWriteError,
-    readLastTrackerPath,
-    writeLastTrackerPath,
-    clearLastTrackerPath,
+    readLastTrackerName,
+    writeLastTrackerName,
+    clearLastTrackerName,
   };
 })();
