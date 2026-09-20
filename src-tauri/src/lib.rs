@@ -4,6 +4,7 @@ use std::{
     path::Path,
     time::{SystemTime, UNIX_EPOCH},
 };
+use tauri::{AppHandle, Manager};
 
 #[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
@@ -24,6 +25,42 @@ fn read_tracker_file(path: String) -> Result<String, String> {
 #[tauri::command]
 fn write_tracker_file_atomic(path: String, contents: String) -> Result<(), String> {
     write_file_atomically(Path::new(&path), contents.as_bytes()).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn read_last_tracker_path(app: AppHandle) -> Result<Option<String>, String> {
+    let path = last_tracker_preference_path(&app)?;
+    match fs::read_to_string(path) {
+        Ok(path) if path.is_empty() => Ok(None),
+        Ok(path) => Ok(Some(path)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+#[tauri::command]
+fn write_last_tracker_path(app: AppHandle, path: String) -> Result<(), String> {
+    let preference_path = last_tracker_preference_path(&app)?;
+    write_file_atomically(&preference_path, path.as_bytes()).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn clear_last_tracker_path(app: AppHandle) -> Result<(), String> {
+    let path = last_tracker_preference_path(&app)?;
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+fn last_tracker_preference_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| error.to_string())?;
+    fs::create_dir_all(&app_data_dir).map_err(|error| error.to_string())?;
+    Ok(app_data_dir.join("last-tracker-path"))
 }
 
 fn write_file_atomically(path: &Path, contents: &[u8]) -> io::Result<()> {
@@ -75,7 +112,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_text_file,
             read_tracker_file,
-            write_tracker_file_atomic
+            write_tracker_file_atomic,
+            read_last_tracker_path,
+            write_last_tracker_path,
+            clear_last_tracker_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running Reaper Setlist Tracker");

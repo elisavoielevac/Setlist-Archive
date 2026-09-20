@@ -32,11 +32,13 @@ let lastSelectedIndex = null;
 let searchDebounce = null;
 let pendingDeleteConfirmation = null;
 let activeTracker = null;
-let trackerHasUnsavedChanges = false;
+let trackerSaveStatus = "saved";
+let trackerSaveRevision = 0;
 
 shows = loadShows();
 bindEvents();
 renderAll();
+void restoreLastTracker();
 
 function bindEvents() {
   fileInput.addEventListener("change", (event) => {
@@ -107,8 +109,7 @@ function loadShows() {
 
 function saveShows() {
   if (activeTracker) {
-    trackerHasUnsavedChanges = true;
-    renderTrackerState();
+    queueActiveTrackerSave();
     return;
   }
 
@@ -118,6 +119,29 @@ function saveShows() {
     console.error("Failed to save shows", error);
     toast("Could not save — browser storage may be full");
   }
+}
+
+function queueActiveTrackerSave() {
+  const tracker = activeTracker;
+  const saveRevision = ++trackerSaveRevision;
+  trackerSaveStatus = "saving";
+  renderTrackerState();
+
+  trackerPersistence.queueTrackerFileWrite(tracker.path, shows, tracker.createdAt).then(
+    () => {
+      if (activeTracker === tracker && saveRevision === trackerSaveRevision) {
+        trackerSaveStatus = "saved";
+        renderTrackerState();
+      }
+    },
+    (error) => {
+      console.error("Failed to autosave tracker", error);
+      if (activeTracker === tracker && saveRevision === trackerSaveRevision) {
+        trackerSaveStatus = "failed";
+        renderTrackerState();
+      }
+    },
+  );
 }
 
 function trackerDialogApi() {
@@ -154,32 +178,60 @@ function renderTrackerState() {
   }
 
   trackerNameEl.textContent = trackerFileName(activeTracker.path);
-  trackerStatusEl.textContent = trackerHasUnsavedChanges
-    ? "Unsaved changes — use Save As to write a copy"
-    : "Saved tracker file";
+  trackerStatusEl.textContent = {
+    saving: "Saving…",
+    saved: "Saved",
+    failed: "Save failed",
+  }[trackerSaveStatus];
   saveAsTrackerBtn.disabled = false;
 }
 
-async function confirmDiscardUnsavedTrackerChanges() {
-  if (!activeTracker || !trackerHasUnsavedChanges) return true;
-
-  const message = `Discard unsaved changes to ${trackerFileName(activeTracker.path)}?`;
-  const dialog = window.__TAURI__?.dialog;
-  if (dialog?.confirm) {
-    return dialog.confirm(message, {
-      title: "Reaper Setlist Tracker",
-      kind: "warning",
-    });
-  }
-  return window.confirm(message);
-}
-
-function activateTracker(path, tracker) {
+async function activateTracker(path, tracker) {
   activeTracker = { path, createdAt: tracker.createdAt };
-  trackerHasUnsavedChanges = false;
+  trackerSaveStatus = "saved";
+  trackerSaveRevision += 1;
+  trackerPersistence.clearTrackerWriteError();
   shows = tracker.shows;
   clearTrackerSelectionState();
   renderAll();
+  try {
+    await trackerPersistence.writeLastTrackerPath(path);
+  } catch (error) {
+    console.error("Failed to remember the active tracker", error);
+  }
+}
+
+async function waitForActiveTrackerSaves({ allowFailure = false } = {}) {
+  if (!activeTracker) return true;
+  try {
+    await trackerPersistence.waitForTrackerFileWrites();
+    return true;
+  } catch (error) {
+    console.error("Failed to finish saving tracker", error);
+    if (allowFailure) return false;
+    trackerSaveStatus = "failed";
+    renderTrackerState();
+    toast("Save failed. The current tracker was not changed.");
+    return false;
+  }
+}
+
+async function restoreLastTracker() {
+  if (!window.__TAURI__?.core?.invoke) return;
+  try {
+    const path = await trackerPersistence.readLastTrackerPath();
+    if (!path) return;
+    const tracker = await trackerPersistence.readTrackerFile(path);
+    await activateTracker(path, tracker);
+  } catch (error) {
+    console.error("Failed to reopen the last tracker", error);
+    try {
+      await trackerPersistence.clearLastTrackerPath();
+    } catch (clearError) {
+      console.error("Failed to clear the invalid tracker preference", clearError);
+    }
+    toast("Could not reopen the last tracker. Showing local archive.");
+  }
 }
 
 async function chooseTrackerSavePath(title) {
@@ -196,12 +248,12 @@ async function chooseTrackerSavePath(title) {
 
 async function createTracker() {
   const path = await chooseTrackerSavePath("New Reaper Setlist Tracker");
-  if (!path || !(await confirmDiscardUnsavedTrackerChanges())) return;
+  if (!path || !(await waitForActiveTrackerSaves())) return;
 
   const now = Date.now();
   try {
     const tracker = await trackerPersistence.writeTrackerFile(path, [], now, now);
-    activateTracker(path, tracker);
+    await activateTracker(path, tracker);
     toast(`Created ${trackerFileName(path)}`);
   } catch (error) {
     console.error("Failed to create tracker", error);
@@ -223,8 +275,8 @@ async function openTracker() {
 
   try {
     const tracker = await trackerPersistence.readTrackerFile(path);
-    if (!(await confirmDiscardUnsavedTrackerChanges())) return;
-    activateTracker(path, tracker);
+    if (!(await waitForActiveTrackerSaves())) return;
+    await activateTracker(path, tracker);
     toast(`Opened ${trackerFileName(path)}`);
   } catch (error) {
     console.error("Failed to open tracker", error);
@@ -246,9 +298,10 @@ async function saveTrackerAs() {
   }
 
   try {
+    await waitForActiveTrackerSaves({ allowFailure: true });
     const now = Date.now();
     const tracker = await trackerPersistence.writeTrackerFile(path, shows, activeTracker.createdAt, now);
-    activateTracker(path, tracker);
+    await activateTracker(path, tracker);
     toast(`Saved copy as ${trackerFileName(path)}`);
   } catch (error) {
     console.error("Failed to save tracker copy", error);

@@ -2,6 +2,8 @@
   const LOCAL_STORAGE_KEY = "setlist-archive-shows-v1";
   const TRACKER_FORMAT = "reaper-setlist-tracker";
   const TRACKER_SCHEMA_VERSION = 1;
+  let trackerWriteQueue = Promise.resolve();
+  let trackerWriteError = null;
 
   function loadActiveShows() {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -75,6 +77,45 @@
     return parseTrackerFile(contents);
   }
 
+  function queueTrackerFileWrite(path, shows, createdAt, updatedAt = Date.now()) {
+    const contents = serializeTrackerFile(shows, createdAt, updatedAt);
+    const write = trackerWriteQueue.then(async () => {
+      await tauriInvoke()("write_tracker_file_atomic", { path, contents });
+      return parseTrackerFile(contents);
+    });
+
+    trackerWriteQueue = write.then(
+      () => {
+        trackerWriteError = null;
+      },
+      (error) => {
+        trackerWriteError = error;
+      },
+    );
+    return write;
+  }
+
+  async function waitForTrackerFileWrites() {
+    await trackerWriteQueue;
+    if (trackerWriteError) throw trackerWriteError;
+  }
+
+  function clearTrackerWriteError() {
+    trackerWriteError = null;
+  }
+
+  async function readLastTrackerPath() {
+    return tauriInvoke()("read_last_tracker_path");
+  }
+
+  async function writeLastTrackerPath(path) {
+    await tauriInvoke()("write_last_tracker_path", { path });
+  }
+
+  async function clearLastTrackerPath() {
+    await tauriInvoke()("clear_last_tracker_path");
+  }
+
   window.trackerPersistence = {
     loadActiveShows,
     saveActiveShows,
@@ -83,5 +124,11 @@
     serializeTrackerFile,
     readTrackerFile,
     writeTrackerFile,
+    queueTrackerFileWrite,
+    waitForTrackerFileWrites,
+    clearTrackerWriteError,
+    readLastTrackerPath,
+    writeLastTrackerPath,
+    clearLastTrackerPath,
   };
 })();
