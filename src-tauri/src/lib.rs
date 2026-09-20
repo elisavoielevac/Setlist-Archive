@@ -47,6 +47,28 @@ fn write_managed_tracker_file(
 }
 
 #[tauri::command]
+fn rename_managed_tracker_file(
+    app: AppHandle,
+    old_name: String,
+    new_name: String,
+) -> Result<String, String> {
+    let directory = managed_trackers_dir(&app)?;
+    rename_managed_tracker_file_in_dir(&directory, &old_name, &new_name)
+}
+
+#[tauri::command]
+fn delete_managed_tracker_file(app: AppHandle, name: String) -> Result<(), String> {
+    let directory = managed_trackers_dir(&app)?;
+    delete_managed_tracker_file_in_dir(&directory, &name)
+}
+
+#[tauri::command]
+fn reveal_managed_tracker_file(app: AppHandle, name: String) -> Result<(), String> {
+    let directory = managed_trackers_dir(&app)?;
+    reveal_managed_tracker_file_in_dir(&directory, &name)
+}
+
+#[tauri::command]
 fn list_managed_tracker_files(app: AppHandle) -> Result<Vec<String>, String> {
     let directory = managed_trackers_dir(&app)?;
     list_managed_tracker_files_in_dir(&directory).map_err(|error| error.to_string())
@@ -168,6 +190,74 @@ fn write_managed_tracker_file_in_dir(
     write_file_atomically(&path, contents).map_err(|error| error.to_string())
 }
 
+fn rename_managed_tracker_file_in_dir(
+    trackers_dir: &Path,
+    old_name: &str,
+    new_name: &str,
+) -> Result<String, String> {
+    let old_name = normalize_managed_tracker_name(old_name)?;
+    let old_path = resolve_managed_tracker_path(trackers_dir, &old_name)?;
+    ensure_regular_managed_archive_file(&old_path)?;
+
+    let new_name = normalize_managed_tracker_name(new_name)?;
+    if old_name.eq_ignore_ascii_case(&new_name) {
+        return Ok(old_name);
+    }
+
+    let new_path = resolve_managed_tracker_path(trackers_dir, &new_name)?;
+    match fs::symlink_metadata(&new_path) {
+        Ok(_) => return Err(format!("An archive named {new_name} already exists")),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.to_string()),
+    }
+
+    fs::rename(&old_path, &new_path).map_err(|error| error.to_string())?;
+    sync_directory(trackers_dir);
+    Ok(new_name)
+}
+
+fn delete_managed_tracker_file_in_dir(trackers_dir: &Path, name: &str) -> Result<(), String> {
+    let path = resolve_managed_tracker_path(trackers_dir, name)?;
+    ensure_regular_managed_archive_file(&path)?;
+    fs::remove_file(&path).map_err(|error| error.to_string())?;
+    sync_directory(trackers_dir);
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn reveal_managed_tracker_file_in_dir(trackers_dir: &Path, name: &str) -> Result<(), String> {
+    let path = resolve_managed_tracker_path(trackers_dir, name)?;
+    ensure_regular_managed_archive_file(&path)?;
+    let status = std::process::Command::new("/usr/bin/open")
+        .arg("-R")
+        .arg(path)
+        .status()
+        .map_err(|error| format!("Could not reveal archive in Finder: {error}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "Could not reveal archive in Finder (open exited with {status})"
+        ))
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn reveal_managed_tracker_file_in_dir(_trackers_dir: &Path, _name: &str) -> Result<(), String> {
+    Err("Reveal in Finder is only available on macOS".into())
+}
+
+fn ensure_regular_managed_archive_file(path: &Path) -> Result<(), String> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_file() => Ok(()),
+        Ok(_) => Err("Managed archive is not a regular file".into()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            Err("Managed archive does not exist".into())
+        }
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 fn has_tracker_file_extension(name: &str) -> bool {
     name.to_ascii_lowercase().ends_with(TRACKER_FILE_EXTENSION)
 }
@@ -199,6 +289,12 @@ fn list_managed_tracker_files_in_dir(trackers_dir: &Path) -> io::Result<Vec<Stri
             .then_with(|| left.cmp(right))
     });
     Ok(tracker_names)
+}
+
+fn sync_directory(directory: &Path) {
+    if let Ok(directory) = File::open(directory) {
+        let _ = directory.sync_all();
+    }
 }
 
 fn write_file_atomically(path: &Path, contents: &[u8]) -> io::Result<()> {
@@ -253,6 +349,9 @@ pub fn run() {
             write_tracker_file_atomic,
             read_managed_tracker_file,
             write_managed_tracker_file,
+            rename_managed_tracker_file,
+            delete_managed_tracker_file,
+            reveal_managed_tracker_file,
             list_managed_tracker_files,
             read_last_tracker_name,
             write_last_tracker_name,
@@ -265,8 +364,9 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::{
-        list_managed_tracker_files_in_dir, managed_trackers_dir_from_app_data,
-        normalize_managed_tracker_name, read_managed_tracker_file_in_dir,
+        delete_managed_tracker_file_in_dir, list_managed_tracker_files_in_dir,
+        managed_trackers_dir_from_app_data, normalize_managed_tracker_name,
+        read_managed_tracker_file_in_dir, rename_managed_tracker_file_in_dir,
         resolve_managed_tracker_path, write_file_atomically, write_managed_tracker_file_in_dir,
     };
     use std::{
@@ -382,6 +482,73 @@ mod tests {
             "updated contents"
         );
         assert!(read_managed_tracker_file_in_dir(&directory, "../outside").is_err());
+
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn renames_a_managed_archive_by_filename() {
+        let directory = unique_temp_directory("managed-archive-rename");
+        write_managed_tracker_file_in_dir(&directory, "LVDN", b"archive contents").unwrap();
+
+        let renamed = rename_managed_tracker_file_in_dir(&directory, "LVDN", "LVDN 2026").unwrap();
+
+        assert_eq!(renamed, "LVDN 2026.setlistarchive");
+        assert!(!directory.join("LVDN.setlistarchive").exists());
+        assert_eq!(
+            read_managed_tracker_file_in_dir(&directory, &renamed).unwrap(),
+            "archive contents"
+        );
+
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn rejects_managed_archive_rename_collisions() {
+        let directory = unique_temp_directory("managed-archive-rename-collision");
+        write_managed_tracker_file_in_dir(&directory, "LVDN", b"first").unwrap();
+        write_managed_tracker_file_in_dir(&directory, "LVDN 2026", b"second").unwrap();
+
+        assert!(rename_managed_tracker_file_in_dir(&directory, "LVDN", "LVDN 2026").is_err());
+        assert_eq!(
+            read_managed_tracker_file_in_dir(&directory, "LVDN").unwrap(),
+            "first"
+        );
+        assert_eq!(
+            read_managed_tracker_file_in_dir(&directory, "LVDN 2026").unwrap(),
+            "second"
+        );
+
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn rejects_invalid_managed_archive_rename_destinations() {
+        let directory = unique_temp_directory("managed-archive-rename-invalid");
+        write_managed_tracker_file_in_dir(&directory, "LVDN", b"archive contents").unwrap();
+
+        assert!(rename_managed_tracker_file_in_dir(&directory, "LVDN", "../outside").is_err());
+        assert!(directory.join("LVDN.setlistarchive").exists());
+
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn deletes_a_regular_managed_archive_by_filename() {
+        let directory = unique_temp_directory("managed-archive-delete");
+        write_managed_tracker_file_in_dir(&directory, "LVDN", b"archive contents").unwrap();
+
+        delete_managed_tracker_file_in_dir(&directory, "LVDN").unwrap();
+
+        assert!(!directory.join("LVDN.setlistarchive").exists());
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn rejects_deleting_a_missing_managed_archive() {
+        let directory = unique_temp_directory("managed-archive-delete-missing");
+
+        assert!(delete_managed_tracker_file_in_dir(&directory, "missing").is_err());
 
         fs::remove_dir_all(directory).unwrap();
     }
