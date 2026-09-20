@@ -20,12 +20,19 @@ const deleteConfirmDialog = document.querySelector("#deleteConfirmDialog");
 const deleteConfirmMessage = document.querySelector("#deleteConfirmMessage");
 const cancelDeleteBtn = document.querySelector("#cancelDeleteBtn");
 const confirmDeleteBtn = document.querySelector("#confirmDeleteBtn");
+const trackerNameEl = document.querySelector("#trackerName");
+const trackerStatusEl = document.querySelector("#trackerStatus");
+const newTrackerBtn = document.querySelector("#newTrackerBtn");
+const openTrackerBtn = document.querySelector("#openTrackerBtn");
+const saveAsTrackerBtn = document.querySelector("#saveAsTrackerBtn");
 
 let shows = [];
 let selectedIds = new Set();
 let lastSelectedIndex = null;
 let searchDebounce = null;
 let pendingDeleteConfirmation = null;
+let activeTracker = null;
+let trackerHasUnsavedChanges = false;
 
 shows = loadShows();
 bindEvents();
@@ -76,6 +83,9 @@ function bindEvents() {
   document.querySelector("#clearSelectionBtn").addEventListener("click", clearSelection);
   document.querySelector("#applyBulkBtn").addEventListener("click", applyBulkEdit);
   document.querySelector("#deleteSelectedBtn").addEventListener("click", deleteSelectedShows);
+  newTrackerBtn.addEventListener("click", createTracker);
+  openTrackerBtn.addEventListener("click", openTracker);
+  saveAsTrackerBtn.addEventListener("click", saveTrackerAs);
   cancelDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(false));
   confirmDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(true));
   document.addEventListener("keydown", (event) => {
@@ -96,11 +106,153 @@ function loadShows() {
 }
 
 function saveShows() {
+  if (activeTracker) {
+    trackerHasUnsavedChanges = true;
+    renderTrackerState();
+    return;
+  }
+
   try {
     trackerPersistence.saveActiveShows(shows);
   } catch (error) {
     console.error("Failed to save shows", error);
     toast("Could not save — browser storage may be full");
+  }
+}
+
+function trackerDialogApi() {
+  const dialog = window.__TAURI__?.dialog;
+  if (!dialog?.open || !dialog.save || !window.__TAURI__?.core?.invoke) {
+    toast("Tracker files require the Tauri desktop app");
+    return null;
+  }
+  return dialog;
+}
+
+function trackerFileName(path) {
+  return path.split(/[\\/]/).pop() || path;
+}
+
+function ensureTrackerExtension(path) {
+  return /\.setlisttracker$/i.test(path) ? path : `${path}.setlisttracker`;
+}
+
+function clearTrackerSelectionState() {
+  selectedIds.clear();
+  lastSelectedIndex = null;
+  bulkTour.value = "";
+  bulkLineup.value = "";
+  bulkNotes.value = "";
+}
+
+function renderTrackerState() {
+  if (!activeTracker) {
+    trackerNameEl.textContent = "Local archive";
+    trackerStatusEl.textContent = "Saved in this browser";
+    saveAsTrackerBtn.disabled = true;
+    return;
+  }
+
+  trackerNameEl.textContent = trackerFileName(activeTracker.path);
+  trackerStatusEl.textContent = trackerHasUnsavedChanges
+    ? "Unsaved changes — use Save As to write a copy"
+    : "Saved tracker file";
+  saveAsTrackerBtn.disabled = false;
+}
+
+async function confirmDiscardUnsavedTrackerChanges() {
+  if (!activeTracker || !trackerHasUnsavedChanges) return true;
+
+  const message = `Discard unsaved changes to ${trackerFileName(activeTracker.path)}?`;
+  const dialog = window.__TAURI__?.dialog;
+  if (dialog?.confirm) {
+    return dialog.confirm(message, {
+      title: "Reaper Setlist Tracker",
+      kind: "warning",
+    });
+  }
+  return window.confirm(message);
+}
+
+function activateTracker(path, tracker) {
+  activeTracker = { path, createdAt: tracker.createdAt };
+  trackerHasUnsavedChanges = false;
+  shows = tracker.shows;
+  clearTrackerSelectionState();
+  renderAll();
+}
+
+async function chooseTrackerSavePath(title) {
+  const dialog = trackerDialogApi();
+  if (!dialog) return null;
+
+  const path = await dialog.save({
+    title,
+    defaultPath: "Untitled.setlisttracker",
+    filters: [{ name: "Reaper Setlist Tracker", extensions: ["setlisttracker"] }],
+  });
+  return path ? ensureTrackerExtension(path) : null;
+}
+
+async function createTracker() {
+  const path = await chooseTrackerSavePath("New Reaper Setlist Tracker");
+  if (!path || !(await confirmDiscardUnsavedTrackerChanges())) return;
+
+  const now = Date.now();
+  try {
+    const tracker = await trackerPersistence.writeTrackerFile(path, [], now, now);
+    activateTracker(path, tracker);
+    toast(`Created ${trackerFileName(path)}`);
+  } catch (error) {
+    console.error("Failed to create tracker", error);
+    toast("Could not create tracker. The current archive was not changed.");
+  }
+}
+
+async function openTracker() {
+  const dialog = trackerDialogApi();
+  if (!dialog) return;
+
+  const path = await dialog.open({
+    title: "Open Reaper Setlist Tracker",
+    multiple: false,
+    directory: false,
+    filters: [{ name: "Reaper Setlist Tracker", extensions: ["setlisttracker"] }],
+  });
+  if (!path || Array.isArray(path)) return;
+
+  try {
+    const tracker = await trackerPersistence.readTrackerFile(path);
+    if (!(await confirmDiscardUnsavedTrackerChanges())) return;
+    activateTracker(path, tracker);
+    toast(`Opened ${trackerFileName(path)}`);
+  } catch (error) {
+    console.error("Failed to open tracker", error);
+    toast("Could not open tracker. The current archive was not changed.");
+  }
+}
+
+async function saveTrackerAs() {
+  if (!activeTracker) {
+    toast("Open or create a tracker before using Save As");
+    return;
+  }
+
+  const path = await chooseTrackerSavePath("Save Reaper Setlist Tracker As");
+  if (!path) return;
+  if (path === activeTracker.path) {
+    toast("Choose a new tracker file name for Save As");
+    return;
+  }
+
+  try {
+    const now = Date.now();
+    const tracker = await trackerPersistence.writeTrackerFile(path, shows, activeTracker.createdAt, now);
+    activateTracker(path, tracker);
+    toast(`Saved copy as ${trackerFileName(path)}`);
+  } catch (error) {
+    console.error("Failed to save tracker copy", error);
+    toast("Could not save tracker copy. The current tracker was not changed.");
   }
 }
 
@@ -879,6 +1031,7 @@ function renderStats() {
 }
 
 function renderAll() {
+  renderTrackerState();
   renderShows();
   renderStats();
   renderSearch();

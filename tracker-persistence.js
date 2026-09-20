@@ -58,11 +58,30 @@
     return `${JSON.stringify(data, null, 2)}\n`;
   }
 
+  function tauriInvoke() {
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (!invoke) throw new Error("Tracker files require the Tauri desktop app");
+    return invoke;
+  }
+
+  async function readTrackerFile(path) {
+    const contents = await tauriInvoke()("read_tracker_file", { path });
+    return parseTrackerFile(contents);
+  }
+
+  async function writeTrackerFile(path, shows, createdAt, updatedAt) {
+    const contents = serializeTrackerFile(shows, createdAt, updatedAt);
+    await tauriInvoke()("write_tracker_file_atomic", { path, contents });
+    return parseTrackerFile(contents);
+  }
+
   window.trackerPersistence = {
     loadActiveShows,
     saveActiveShows,
     validateTrackerData,
     parseTrackerFile,
     serializeTrackerFile,
+    readTrackerFile,
+    writeTrackerFile,
   };
 })();
