@@ -1,7 +1,7 @@
 [package]
-name = "reaper-setlist-tracker"
+name = "reaper-setlist-archive"
 version = "0.1.0"
-description = "Reaper Setlist Tracker desktop application"
+description = "Reaper Setlist Archive desktop application"
 authors = ["Elisa Voielevac"]
 edition = "2021"
 

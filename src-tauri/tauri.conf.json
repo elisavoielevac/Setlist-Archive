@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Reaper Setlist Tracker",
+  "productName": "Reaper Setlist Archive",
   "version": "0.1.0",
   "identifier": "com.elisavoielevac.reapersetlisttracker",
   "build": {
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Reaper Setlist Tracker",
+        "title": "Reaper Setlist Archive",
         "width": 1100,
         "height": 850,
         "minWidth": 700,

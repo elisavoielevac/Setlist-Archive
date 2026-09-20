@@ -158,11 +158,11 @@ function queueActiveTrackerSave() {
 }
 
 function trackerDisplayName(name) {
-  return name.replace(/\.setlisttracker$/i, "");
+  return name.replace(/\.setlistarchive$/i, "");
 }
 
 function ensureTrackerExtension(name) {
-  return /\.setlisttracker$/i.test(name) ? name : `${name}.setlisttracker`;
+  return /\.setlistarchive$/i.test(name) ? name : `${name}.setlistarchive`;
 }
 
 function clearTrackerSelectionState() {
@@ -333,8 +333,8 @@ function validateManagedTrackerName(name) {
   if (name === "." || name === "..") return 'Archive name cannot be "." or "..".';
   if (name.includes("/") || name.includes("\\")) return "Archive name cannot contain / or \\.";
 
-  const stem = name.replace(/\.setlisttracker$/i, "").trim();
-  if (!stem) return "Enter an archive name before the .setlisttracker extension.";
+  const stem = name.replace(/\.setlistarchive$/i, "").trim();
+  if (!stem) return "Enter an archive name before the .setlistarchive extension.";
   return "";
 }
 

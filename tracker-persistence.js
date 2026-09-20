@@ -1,5 +1,5 @@
 (() => {
-  const TRACKER_FORMAT = "reaper-setlist-tracker";
+  const TRACKER_FORMAT = "reaper-setlist-archive";
   const TRACKER_SCHEMA_VERSION = 1;
   let trackerWriteQueue = Promise.resolve();
   let trackerWriteError = null;

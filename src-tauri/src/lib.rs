@@ -7,7 +7,7 @@ use std::{
 use tauri::{AppHandle, Manager};
 
 const MANAGED_TRACKERS_DIRECTORY: &str = "Trackers";
-const TRACKER_FILE_EXTENSION: &str = ".setlisttracker";
+const TRACKER_FILE_EXTENSION: &str = ".setlistarchive";
 
 #[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
@@ -121,16 +121,16 @@ fn managed_trackers_dir_from_app_data(app_data_dir: &Path) -> io::Result<PathBuf
 fn normalize_managed_tracker_name(name: &str) -> Result<String, String> {
     let name = name.trim();
     if name.is_empty() {
-        return Err("Tracker name cannot be empty".into());
+        return Err("Archive name cannot be empty".into());
     }
     if name == "." || name == ".." {
-        return Err("Tracker name cannot be . or ..".into());
+        return Err("Archive name cannot be . or ..".into());
     }
     if name.contains('/') || name.contains('\\') {
-        return Err("Tracker name must not contain path separators".into());
+        return Err("Archive name must not contain path separators".into());
     }
     if name.contains('\0') {
-        return Err("Tracker name contains an invalid character".into());
+        return Err("Archive name contains an invalid character".into());
     }
 
     let normalized = if has_tracker_file_extension(name) {
@@ -140,7 +140,7 @@ fn normalize_managed_tracker_name(name: &str) -> Result<String, String> {
     };
     let stem = &normalized[..normalized.len() - TRACKER_FILE_EXTENSION.len()];
     if stem.trim().is_empty() {
-        return Err("Tracker name must include a filename stem".into());
+        return Err("Archive name must include a filename stem".into());
     }
     Ok(normalized)
 }
@@ -149,7 +149,7 @@ fn resolve_managed_tracker_path(trackers_dir: &Path, name: &str) -> Result<PathB
     let filename = normalize_managed_tracker_name(name)?;
     let path = trackers_dir.join(&filename);
     if path.parent() != Some(trackers_dir) {
-        return Err("Managed tracker path must remain inside the Trackers directory".into());
+        return Err("Managed archive path must remain inside the Trackers directory".into());
     }
     Ok(path)
 }
@@ -208,11 +208,11 @@ fn write_file_atomically(path: &Path, contents: &[u8]) -> io::Result<()> {
         .ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "Tracker path has no parent directory",
+                "Archive path has no parent directory",
             )
         })?;
     let file_name = path.file_name().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, "Tracker path has no file name")
+        io::Error::new(io::ErrorKind::InvalidInput, "Archive path has no file name")
     })?;
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -259,7 +259,7 @@ pub fn run() {
             clear_last_tracker_name
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Reaper Setlist Tracker");
+        .expect("error while running Reaper Setlist Archive");
 }
 
 #[cfg(test)]
@@ -281,12 +281,12 @@ mod tests {
             .unwrap()
             .as_nanos();
         let directory = std::env::temp_dir().join(format!(
-            "reaper-setlist-tracker-{}/{}",
+            "reaper-setlist-archive-{}/{}",
             process::id(),
             unique
         ));
         fs::create_dir_all(&directory).unwrap();
-        let path = directory.join("test.setlisttracker");
+        let path = directory.join("test.setlistarchive");
         fs::write(&path, "old contents").unwrap();
 
         write_file_atomically(&path, b"new contents").unwrap();
@@ -300,15 +300,15 @@ mod tests {
     fn normalizes_tracker_stems_and_extensions() {
         assert_eq!(
             normalize_managed_tracker_name("LVDN"),
-            Ok("LVDN.setlisttracker".into())
+            Ok("LVDN.setlistarchive".into())
         );
         assert_eq!(
-            normalize_managed_tracker_name("Artist 2026.setlisttracker"),
-            Ok("Artist 2026.setlisttracker".into())
+            normalize_managed_tracker_name("Artist 2026.setlistarchive"),
+            Ok("Artist 2026.setlistarchive".into())
         );
         assert_eq!(
-            normalize_managed_tracker_name("Artist 2026.SETLISTTRACKER"),
-            Ok("Artist 2026.SETLISTTRACKER".into())
+            normalize_managed_tracker_name("Artist 2026.SETLISTARCHIVE"),
+            Ok("Artist 2026.SETLISTARCHIVE".into())
         );
     }
 
@@ -319,7 +319,7 @@ mod tests {
             "   ",
             ".",
             "..",
-            ".setlisttracker",
+            ".setlistarchive",
             "../LVDN",
             "a/b",
             "a\\b",
@@ -337,7 +337,7 @@ mod tests {
         let trackers_directory = managed_trackers_dir_from_app_data(&app_data_directory).unwrap();
 
         let path = resolve_managed_tracker_path(&trackers_directory, "LVDN").unwrap();
-        assert_eq!(path, trackers_directory.join("LVDN.setlisttracker"));
+        assert_eq!(path, trackers_directory.join("LVDN.setlistarchive"));
         assert!(resolve_managed_tracker_path(&trackers_directory, "../outside").is_err());
 
         fs::remove_dir_all(app_data_directory).unwrap();
@@ -346,19 +346,19 @@ mod tests {
     #[test]
     fn lists_regular_tracker_files_in_case_insensitive_name_order() {
         let directory = unique_temp_directory("managed-tracker-list");
-        fs::write(directory.join("Zeta.setlisttracker"), "{}").unwrap();
-        fs::write(directory.join("alpha.setlisttracker"), "{}").unwrap();
-        fs::write(directory.join("Beta.SETLISTTRACKER"), "{}").unwrap();
+        fs::write(directory.join("Zeta.setlistarchive"), "{}").unwrap();
+        fs::write(directory.join("alpha.setlistarchive"), "{}").unwrap();
+        fs::write(directory.join("Beta.SETLISTARCHIVE"), "{}").unwrap();
         fs::write(directory.join("notes.txt"), "").unwrap();
-        fs::write(directory.join(".setlisttracker"), "{}").unwrap();
-        fs::create_dir(directory.join("nested.setlisttracker")).unwrap();
+        fs::write(directory.join(".setlistarchive"), "{}").unwrap();
+        fs::create_dir(directory.join("nested.setlistarchive")).unwrap();
 
         assert_eq!(
             list_managed_tracker_files_in_dir(&directory).unwrap(),
             vec![
-                "alpha.setlisttracker",
-                "Beta.SETLISTTRACKER",
-                "Zeta.setlisttracker"
+                "alpha.setlistarchive",
+                "Beta.SETLISTARCHIVE",
+                "Zeta.setlistarchive"
             ]
         );
 
@@ -371,11 +371,11 @@ mod tests {
 
         write_managed_tracker_file_in_dir(&directory, "LVDN", b"first contents").unwrap();
         assert_eq!(
-            read_managed_tracker_file_in_dir(&directory, "LVDN.setlisttracker").unwrap(),
+            read_managed_tracker_file_in_dir(&directory, "LVDN.setlistarchive").unwrap(),
             "first contents"
         );
 
-        write_managed_tracker_file_in_dir(&directory, "LVDN.setlisttracker", b"updated contents")
+        write_managed_tracker_file_in_dir(&directory, "LVDN.setlistarchive", b"updated contents")
             .unwrap();
         assert_eq!(
             read_managed_tracker_file_in_dir(&directory, "LVDN").unwrap(),
@@ -392,7 +392,7 @@ mod tests {
             .unwrap()
             .as_nanos();
         let directory = std::env::temp_dir().join(format!(
-            "reaper-setlist-tracker-{label}-{}/{}",
+            "reaper-setlist-archive-{label}-{}/{}",
             process::id(),
             unique
         ));
