@@ -56,6 +56,10 @@
     return parseTrackerFile(contents);
   }
 
+  async function listManagedTrackerFiles() {
+    return tauriInvoke()("list_managed_tracker_files");
+  }
+
   async function writeTrackerFile(path, shows, createdAt, updatedAt) {
     const contents = serializeTrackerFile(shows, createdAt, updatedAt);
     await tauriInvoke()("write_tracker_file_atomic", { path, contents });
@@ -106,6 +110,7 @@
     parseTrackerFile,
     serializeTrackerFile,
     readTrackerFile,
+    listManagedTrackerFiles,
     writeTrackerFile,
     queueTrackerFileWrite,
     waitForTrackerFileWrites,
