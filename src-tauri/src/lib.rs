@@ -20,6 +20,70 @@ fn read_text_file(path: String) -> Result<String, String> {
         })
 }
 
+fn resolve_dropped_path_in_dir(path: &Path) -> Result<PathBuf, String> {
+    let metadata = fs::symlink_metadata(path).map_err(|error| error.to_string())?;
+    if metadata.is_file() {
+        return Ok(path.to_path_buf());
+    }
+    if !metadata.is_dir() {
+        return Err(format!(
+            "Dropped path is not a file or folder: {}",
+            path.display()
+        ));
+    }
+
+    let mut projects = Vec::new();
+    for entry in fs::read_dir(path).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let file_name = entry.file_name();
+        if file_name.to_string_lossy().starts_with('.')
+            || !entry
+                .file_type()
+                .map_err(|error| error.to_string())?
+                .is_file()
+        {
+            continue;
+        }
+        if entry
+            .path()
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("rpp"))
+        {
+            projects.push(entry.path());
+        }
+    }
+
+    projects.sort_unstable_by(|left, right| {
+        left.file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_lowercase()
+            .cmp(
+                &right
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_lowercase(),
+            )
+            .then_with(|| left.file_name().cmp(&right.file_name()))
+    });
+
+    match projects.len() {
+        1 => Ok(projects.remove(0)),
+        0 => Err(format!("No REAPER project found in {}", path.display())),
+        _ => Err(format!(
+            "Multiple REAPER projects found in {}",
+            path.display()
+        )),
+    }
+}
+
+#[tauri::command]
+fn resolve_dropped_path(path: String) -> Result<String, String> {
+    resolve_dropped_path_in_dir(Path::new(&path))
+        .map(|resolved| resolved.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn read_tracker_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|error| error.to_string())
@@ -345,6 +409,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             read_text_file,
+            resolve_dropped_path,
             read_tracker_file,
             write_tracker_file_atomic,
             read_managed_tracker_file,
@@ -367,7 +432,8 @@ mod tests {
         delete_managed_tracker_file_in_dir, list_managed_tracker_files_in_dir,
         managed_trackers_dir_from_app_data, normalize_managed_tracker_name,
         read_managed_tracker_file_in_dir, rename_managed_tracker_file_in_dir,
-        resolve_managed_tracker_path, write_file_atomically, write_managed_tracker_file_in_dir,
+        resolve_dropped_path_in_dir, resolve_managed_tracker_path, write_file_atomically,
+        write_managed_tracker_file_in_dir,
     };
     use std::{
         fs, process,
@@ -484,6 +550,36 @@ mod tests {
         assert!(read_managed_tracker_file_in_dir(&directory, "../outside").is_err());
 
         fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn resolves_only_one_shallow_rpp_project_from_a_dropped_folder() {
+        let directory = unique_temp_directory("dropped-folder-resolver");
+        let project = directory.join("show.RPP");
+        fs::write(&project, "project").unwrap();
+        fs::write(directory.join(".hidden.rpp"), "hidden").unwrap();
+        fs::write(directory.join("notes.txt"), "notes").unwrap();
+        fs::create_dir(directory.join("nested")).unwrap();
+        fs::write(directory.join("nested").join("nested.rpp"), "nested").unwrap();
+
+        assert_eq!(resolve_dropped_path_in_dir(&directory).unwrap(), project);
+
+        let empty_directory = unique_temp_directory("dropped-folder-empty");
+        fs::write(empty_directory.join("notes.txt"), "notes").unwrap();
+        assert!(resolve_dropped_path_in_dir(&empty_directory)
+            .unwrap_err()
+            .starts_with("No REAPER project found in"));
+
+        let multiple_directory = unique_temp_directory("dropped-folder-multiple");
+        fs::write(multiple_directory.join("a.rpp"), "a").unwrap();
+        fs::write(multiple_directory.join("b.rpp"), "b").unwrap();
+        assert!(resolve_dropped_path_in_dir(&multiple_directory)
+            .unwrap_err()
+            .starts_with("Multiple REAPER projects found in"));
+
+        fs::remove_dir_all(directory).unwrap();
+        fs::remove_dir_all(empty_directory).unwrap();
+        fs::remove_dir_all(multiple_directory).unwrap();
     }
 
     #[test]

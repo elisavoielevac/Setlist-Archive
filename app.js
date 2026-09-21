@@ -1268,8 +1268,17 @@ async function setupTauriFileDrop() {
 
       const paths = event.payload.paths || [];
       console.info("[Tauri drop] Native drop received", paths);
+      const resolvedPaths = (await Promise.all(paths.map(async (path) => {
+        try {
+          return await invoke("resolve_dropped_path", { path });
+        } catch (error) {
+          console.error(`[Tauri drop] Could not resolve dropped path ${path}`, error);
+          toast(typeof error === "string" ? error : error?.message || `Could not resolve dropped path ${path}`);
+          return null;
+        }
+      }))).filter(Boolean);
       const batchFingerprints = new Set();
-      const importedShows = await Promise.all(paths.map(async (path) => {
+      const importedShows = await Promise.all(resolvedPaths.map(async (path) => {
         const filename = path.split(/[\\/]/).pop() || path;
         try {
           const text = await invoke("read_text_file", { path });
