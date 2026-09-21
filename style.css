@@ -562,6 +562,39 @@ textarea:focus {
   font-size: 0.75rem;
 }
 
+.marker-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.marker-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: 0.75rem;
+}
+
+.marker-actions .row-time {
+  margin-left: 0;
+}
+
+.marker-row.is-ignored {
+  color: var(--dim);
+}
+
+.marker-row.is-ignored .row-time {
+  color: var(--dim);
+}
+
+.ignored-marker-label {
+  color: var(--dim);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+}
+
 .row.is-total .row-time {
   color: var(--accent);
 }
@@ -819,6 +852,39 @@ textarea:focus {
   padding: 0.75rem;
   color: var(--dim);
   font-size: 0.875rem;
+}
+
+.ignored-songs-dialog-panel {
+  width: min(24rem, 100%);
+}
+
+.ignored-songs-list {
+  display: grid;
+  max-height: 18rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.ignored-song-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.ignored-song-row:last-child {
+  border-bottom: 0;
+}
+
+.ignored-song-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .confirm-dialog-actions {

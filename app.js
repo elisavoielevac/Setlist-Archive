@@ -33,6 +33,7 @@ const trackerNameEl = document.querySelector("#trackerName");
 const trackerStatusEl = document.querySelector("#trackerStatus");
 const newTrackerBtn = document.querySelector("#newTrackerBtn");
 const manageArchivesBtn = document.querySelector("#manageArchivesBtn");
+const ignoredSongsBtn = document.querySelector("#ignoredSongsBtn");
 const manageArchivesDialog = document.querySelector("#manageArchivesDialog");
 const manageArchivesList = document.querySelector("#manageArchivesList");
 const cancelManageArchivesBtn = document.querySelector("#cancelManageArchivesBtn");
@@ -43,6 +44,9 @@ const duplicateManagedArchiveBtn = document.querySelector("#duplicateManagedArch
 const exportManagedArchiveBtn = document.querySelector("#exportManagedArchiveBtn");
 const deleteManagedArchiveBtn = document.querySelector("#deleteManagedArchiveBtn");
 const revealManagedArchiveBtn = document.querySelector("#revealManagedArchiveBtn");
+const ignoredSongsDialog = document.querySelector("#ignoredSongsDialog");
+const ignoredSongsList = document.querySelector("#ignoredSongsList");
+const cancelIgnoredSongsBtn = document.querySelector("#cancelIgnoredSongsBtn");
 
 let shows = [];
 let selectedIds = new Set();
@@ -55,6 +59,7 @@ let trackerSaveStatus = "saved";
 let trackerSaveRevision = 0;
 let selectedManagedArchiveName = null;
 let dialogReturnFocus = null;
+let ignoredSongsDialogReturnFocus = null;
 let importHighlightTimer = null;
 let highlightedImportedShow = null;
 
@@ -118,7 +123,9 @@ function bindEvents() {
   document.querySelector("#deleteSelectedBtn").addEventListener("click", deleteSelectedShows);
   newTrackerBtn.addEventListener("click", createTracker);
   manageArchivesBtn.addEventListener("click", showManageArchives);
+  ignoredSongsBtn.addEventListener("click", showIgnoredSongs);
   cancelManageArchivesBtn.addEventListener("click", closeManageArchives);
+  cancelIgnoredSongsBtn.addEventListener("click", closeIgnoredSongs);
   openManagedArchiveBtn.addEventListener("click", openSelectedManagedArchive);
   importManagedArchiveBtn.addEventListener("click", importArchive);
   renameManagedArchiveBtn.addEventListener("click", renameSelectedManagedArchive);
@@ -143,6 +150,10 @@ function bindEvents() {
         resolveTrackerNameDialog(null);
         return;
       }
+      if (!ignoredSongsDialog.classList.contains("hidden")) {
+        closeIgnoredSongs();
+        return;
+      }
       closeManageArchives();
     }
   });
@@ -151,6 +162,10 @@ function bindEvents() {
   showList.addEventListener("change", onShowListChange);
   showList.addEventListener("input", onShowListInput);
   showList.addEventListener("focusout", onShowListFocusOut);
+  ignoredSongsList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-action='unignore']");
+    if (button) unignoreSongAt(Number(button.dataset.index));
+  });
 }
 
 function saveShows() {
@@ -210,6 +225,7 @@ function renderTrackerState() {
     fileInput.disabled = true;
     dropzone.classList.add("is-disabled");
     dropzone.setAttribute("aria-disabled", "true");
+    ignoredSongsBtn.disabled = true;
     dropzoneText.innerHTML = "<strong>Create or select an archive first</strong><br />then import .rpp or .csv files";
     return;
   }
@@ -221,6 +237,7 @@ function renderTrackerState() {
     failed: "Save failed",
   }[trackerSaveStatus];
   fileInput.disabled = false;
+  ignoredSongsBtn.disabled = false;
   dropzone.classList.remove("is-disabled");
   dropzone.setAttribute("aria-disabled", "false");
   dropzoneText.innerHTML = "<strong>Drop .rpp or .csv files here</strong><br />or click to choose files";
@@ -550,6 +567,65 @@ function closeManageArchives() {
   manageArchivesDialog.classList.add("hidden");
 }
 
+function showIgnoredSongs() {
+  if (!requireActiveTracker()) return;
+  ignoredSongsDialogReturnFocus = document.activeElement;
+  renderIgnoredSongs();
+  ignoredSongsDialog.classList.remove("hidden");
+  requestAnimationFrame(() => cancelIgnoredSongsBtn.focus());
+}
+
+function renderIgnoredSongs() {
+  const ignoredNames = activeTracker?.ignoredSongNames || [];
+  if (!ignoredNames.length) {
+    ignoredSongsList.innerHTML = `<div class="manage-archives-empty">No ignored songs</div>`;
+    return;
+  }
+
+  ignoredSongsList.innerHTML = ignoredNames.map((name, index) => `
+    <div class="ignored-song-row">
+      <span class="ignored-song-name">${escapeHtml(name)}</span>
+      <button type="button" class="text-btn" data-action="unignore" data-index="${index}">Unignore</button>
+    </div>
+  `).join("");
+}
+
+function closeIgnoredSongs() {
+  if (ignoredSongsDialog.classList.contains("hidden")) return;
+  ignoredSongsDialog.classList.add("hidden");
+  const element = ignoredSongsDialogReturnFocus;
+  ignoredSongsDialogReturnFocus = null;
+  if (element instanceof HTMLElement && document.contains(element) && !element.matches(":disabled")) {
+    element.focus();
+  }
+}
+
+function unignoreSongAt(index) {
+  if (!activeTracker) return;
+  const ignoredName = activeTracker.ignoredSongNames?.[index];
+  if (ignoredName === undefined) return;
+
+  const ignoredKey = normalizeSongName(ignoredName);
+  activeTracker.ignoredSongNames = activeTracker.ignoredSongNames.filter((name) => (
+    normalizeSongName(name) !== ignoredKey
+  ));
+  saveShows();
+  renderAll();
+  toast(`Unignored "${String(ignoredName).trim()}"`);
+}
+
+function ignoreSongName(name) {
+  if (!activeTracker) return;
+  const displayName = String(name || "").trim();
+  const normalizedName = normalizeSongName(displayName);
+  if (!normalizedName || isSongIgnored(displayName)) return;
+
+  activeTracker.ignoredSongNames.push(displayName);
+  saveShows();
+  renderAll();
+  toast(`Ignored "${displayName}"`);
+}
+
 async function openSelectedManagedArchive() {
   const name = selectedManagedArchiveName;
   if (!name) return;
@@ -811,7 +887,7 @@ function parseShowNameMeta(filename) {
 function parseRppFull(text) {
   const markers = [];
   const items = [];
-  const markerRe = /^MARKER\s+\d+\s+([\d.]+)\s+"((?:\\.|[^"])*)"/;
+  const markerRe = /^MARKER\s+\d+\s+([\d.]+)\s+(?:"((?:\\.|[^"])*)"|(\S+))/;
   const lines = String(text || "").split(/\r?\n/);
   const stack = [];
   let currentItem = null;
@@ -823,7 +899,7 @@ function parseRppFull(text) {
     if (markerMatch) {
       markers.push({
         time: Number.parseFloat(markerMatch[1]),
-        name: unescapeRpp(markerMatch[2]).trim(),
+        name: (markerMatch[2] !== undefined ? unescapeRpp(markerMatch[2]) : markerMatch[3]).trim(),
       });
     }
 
@@ -1293,12 +1369,23 @@ function renderShows() {
         ${metaInput(show, "lineup", "Band lineup (comma separated)", "full")}
         <textarea data-field="notes" placeholder="Notes about this show…" rows="2">${escapeHtml(show.notes || "")}</textarea>
         ${renderRecordingLength(show)}
-        ${show.markers.map((marker) => `
-          <div class="row">
-            <span>${escapeHtml(marker.name)}</span>
-            <span class="row-time">${fmtTime(marker.time)}</span>
+        ${show.markers.map((marker) => {
+          const ignored = isSongIgnored(marker.name);
+          const canIgnore = Boolean(normalizeSongName(marker.name));
+          return `
+          <div class="row marker-row${ignored ? " is-ignored" : ""}">
+            <span class="marker-name">${escapeHtml(marker.name)}</span>
+            <span class="marker-actions">
+              <span class="row-time">${fmtTime(marker.time)}</span>
+              ${ignored
+                ? `<span class="ignored-marker-label">Ignored</span>`
+                : canIgnore
+                  ? `<button type="button" class="text-btn marker-ignore-btn" data-action="ignore" data-song-name="${escapeHtml(marker.name)}">Ignore</button>`
+                  : ""}
+            </span>
           </div>
-        `).join("")}
+        `;
+        }).join("")}
         <div class="card-actions">
           <button type="button" class="danger-btn" data-action="delete">Delete show</button>
         </div>
@@ -1311,6 +1398,11 @@ function onShowListClick(event) {
   const card = event.target.closest(".show-card");
   if (!card) return;
   const id = card.dataset.id;
+
+  if (event.target.closest("[data-action='ignore']")) {
+    ignoreSongName(event.target.closest("[data-action='ignore']").dataset.songName);
+    return;
+  }
 
   if (event.target.closest("[data-action='delete']")) {
     deleteSingleShow(id);
@@ -1742,6 +1834,7 @@ function renderAll() {
   renderStats();
   renderSearch();
   renderBulkBar();
+  renderIgnoredSongs();
 }
 
 function switchTab(tab) {
