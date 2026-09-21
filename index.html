@@ -9,6 +9,18 @@
   <body>
     <div class="page">
       <header class="site-header">
+        <button
+          id="themeToggleBtn"
+          type="button"
+          class="theme-toggle"
+          aria-label="Switch to light mode"
+          aria-pressed="false"
+          title="Switch to light mode"
+        >
+          <span class="theme-toggle-icon theme-toggle-moon" aria-hidden="true">☾</span>
+          <span class="theme-toggle-icon theme-toggle-sun" aria-hidden="true">☼</span>
+          <span class="theme-toggle-knob" aria-hidden="true"></span>
+        </button>
         <h1>Reaper Setlist Archive</h1>
         <p class="lede">
           Drop in your Reaper project files (.rpp) or an exported marker CSV. Every marker becomes a
@@ -27,7 +39,6 @@
           <button id="newTrackerBtn" type="button" class="primary-btn">New Archive</button>
           <button id="manageArchivesBtn" type="button" class="text-btn">Manage Archives</button>
           <button id="ignoredSongsBtn" type="button" class="text-btn" disabled>Ignored Songs</button>
-          <button id="themeToggleBtn" type="button" class="text-btn" aria-label="Switch to light theme" aria-pressed="false">Light</button>
         </div>
       </div>
 

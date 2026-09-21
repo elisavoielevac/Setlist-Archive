@@ -182,8 +182,8 @@ function applyTheme(theme) {
   activeTheme = theme === "light" ? "light" : "dark";
   document.documentElement.dataset.theme = activeTheme;
   const nextTheme = activeTheme === "dark" ? "light" : "dark";
-  themeToggleBtn.textContent = nextTheme === "light" ? "Light" : "Dark";
-  themeToggleBtn.setAttribute("aria-label", `Switch to ${nextTheme} theme`);
+  themeToggleBtn.setAttribute("aria-label", `Switch to ${nextTheme} mode`);
+  themeToggleBtn.title = `Switch to ${nextTheme} mode`;
   themeToggleBtn.setAttribute("aria-pressed", String(activeTheme === "light"));
 }
 
