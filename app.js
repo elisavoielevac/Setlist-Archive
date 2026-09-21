@@ -902,6 +902,10 @@ function normalizeSongName(name) {
   return String(name || "").trim().toLowerCase();
 }
 
+function isSupportedImportFile(filename) {
+  return /\.(rpp|csv)$/i.test(String(filename || ""));
+}
+
 function isSongIgnored(name) {
   const normalizedName = normalizeSongName(name);
   if (!normalizedName) return false;
@@ -1263,6 +1267,11 @@ async function handleFiles(fileList) {
 }
 
 async function importFileText(filename, text, batchFingerprints) {
+  if (!isSupportedImportFile(filename)) {
+    toast(`Unsupported file: ${filename}`);
+    return null;
+  }
+
   const sourceFingerprint = await fingerprintSourceText(text);
   if (/\.csv$/i.test(filename)) {
     return addMarkersAsShow(filename, parseCsv(text), [], sourceFingerprint, batchFingerprints);
