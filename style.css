@@ -454,6 +454,16 @@ textarea:focus {
   box-shadow: 0 0 0 2px rgba(61, 220, 151, 0.12);
 }
 
+.show-card.is-search-focused {
+  border-color: rgba(126, 166, 255, 0.7);
+  box-shadow: 0 0 0 2px rgba(126, 166, 255, 0.14);
+}
+
+.show-card.is-import-highlighted.is-search-focused {
+  border-color: rgba(61, 220, 151, 0.7);
+  box-shadow: 0 0 0 2px rgba(61, 220, 151, 0.12), 0 0 0 4px rgba(126, 166, 255, 0.12);
+}
+
 .show-card-header {
   flex-wrap: nowrap;
   padding: 0.625rem 0.875rem;

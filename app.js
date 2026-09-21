@@ -62,6 +62,8 @@ let dialogReturnFocus = null;
 let ignoredSongsDialogReturnFocus = null;
 let importHighlightTimer = null;
 let highlightedImportedShow = null;
+let searchFocusTimer = null;
+let highlightedSearchShow = null;
 
 const SET_BOUNDARY_SYNC_TOLERANCE_SECONDS = 0.75;
 
@@ -1518,10 +1520,24 @@ function reopenShow(id) {
 function focusShow(id) {
   switchTab("shows");
   reopenShow(id);
-  document.querySelector(`.show-card[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({
+  highlightedSearchShow?.classList.remove("is-search-focused");
+  highlightedSearchShow = null;
+  if (searchFocusTimer) clearTimeout(searchFocusTimer);
+  searchFocusTimer = null;
+  const card = document.querySelector(`.show-card[data-id="${CSS.escape(id)}"]`);
+  if (!card) return;
+
+  card.scrollIntoView({
     behavior: "smooth",
     block: "center",
   });
+  card.classList.add("is-search-focused");
+  highlightedSearchShow = card;
+  searchFocusTimer = setTimeout(() => {
+    card.classList.remove("is-search-focused");
+    if (highlightedSearchShow === card) highlightedSearchShow = null;
+    searchFocusTimer = null;
+  }, 1600);
 }
 
 function restoreEditedShow(id, wasExpanded) {
@@ -1718,7 +1734,8 @@ function renderSearch() {
 
   const showHits = [];
   shows.forEach((show) => {
-    const fields = [show.name, show.venue, show.tour, show.lineup, show.notes].filter(Boolean);
+    const dateFields = show.date ? [show.date, showDateLabel(show.date)] : [];
+    const fields = [show.name, show.venue, ...dateFields, show.tour, show.lineup, show.notes].filter(Boolean);
     let bestScore = null;
     fields.forEach((field) => {
       const score = fuzzyScore(field, query);
@@ -1740,7 +1757,7 @@ function renderSearch() {
       <div class="hit" data-focus-show="${escapeHtml(show.id)}">
         <div class="min-w-0">
           <div class="hit-title">${escapeHtml(marker.name)}</div>
-          <div class="hit-sub">${escapeHtml(show.name)}${show.date ? ` · ${escapeHtml(show.date)}` : ""}${show.venue ? ` · ${escapeHtml(show.venue)}` : ""}</div>
+          <div class="hit-sub">${escapeHtml(show.name)}${show.date ? ` · ${escapeHtml(showDateLabel(show.date))}` : ""}${show.venue ? ` · ${escapeHtml(show.venue)}` : ""}</div>
         </div>
         <div class="hit-time">${fmtTime(marker.time)}</div>
       </div>
@@ -1753,7 +1770,7 @@ function renderSearch() {
       <div class="hit" data-focus-show="${escapeHtml(show.id)}">
         <div class="min-w-0">
           <div class="hit-title">${escapeHtml(show.name)}</div>
-          <div class="hit-sub">${[show.date, show.venue, show.tour, show.lineup].filter(Boolean).map((value) => escapeHtml(value)).join(" · ")}</div>
+          <div class="hit-sub">${[show.date ? showDateLabel(show.date) : "", show.venue, show.tour, show.lineup].filter(Boolean).map((value) => escapeHtml(value)).join(" · ")}</div>
         </div>
         <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
       </div>
