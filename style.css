@@ -722,44 +722,6 @@ textarea:focus {
   color: #ff7878;
 }
 
-.archive-list {
-  display: grid;
-  max-height: 18rem;
-  margin-bottom: 0.5rem;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-}
-
-.archive-list-item {
-  width: 100%;
-  padding: 0.55rem 0.65rem;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.875rem;
-  text-align: left;
-}
-
-.archive-list-item:last-child {
-  border-bottom: 0;
-}
-
-.archive-list-item:hover,
-.archive-list-item:focus-visible {
-  background: var(--panel-2);
-  color: var(--accent);
-  outline: none;
-}
-
-.archive-list-empty {
-  padding: 0.75rem;
-  color: var(--dim);
-  font-size: 0.875rem;
-}
-
 .manage-archives-dialog-panel {
   width: min(30rem, 100%);
 }

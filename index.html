@@ -13,7 +13,7 @@
         <p class="lede">
           Drop in your Reaper project files (.rpp) or an exported marker CSV. Every marker becomes a
           song entry you can search across every show you've ever recorded — along with tour, lineup
-          and notes. Create or open an archive to start building your collection.
+          and notes. Create or select an archive to start building your collection.
         </p>
       </header>
 
@@ -21,11 +21,10 @@
         <div class="tracker-state">
           <span class="tracker-label">Archive</span>
           <strong id="trackerName">No archive open</strong>
-          <span id="trackerStatus" class="tracker-status">Create or open an archive to begin</span>
+          <span id="trackerStatus" class="tracker-status">Create or select an archive to begin</span>
         </div>
         <div class="tracker-actions">
           <button id="newTrackerBtn" type="button" class="primary-btn">New Archive</button>
-          <button id="openTrackerBtn" type="button" class="text-btn">Open Archive</button>
           <button id="manageArchivesBtn" type="button" class="text-btn">Manage Archives</button>
           <button id="saveAsTrackerBtn" type="button" class="text-btn">Duplicate Archive</button>
         </div>
@@ -49,7 +48,7 @@
       <div class="section-label">Add a show</div>
       <div id="dropzone" class="dropzone">
         <div id="dzText">
-          <strong>Create or open an archive first</strong><br />
+          <strong>Create or select an archive first</strong><br />
           then import .rpp or .csv files
         </div>
       </div>
@@ -111,7 +110,6 @@
         <p id="trackerNameDialogMessage" class="tracker-name-dialog-message hidden"></p>
         <label class="tracker-name-dialog-label" for="trackerNameInput">Archive name</label>
         <input id="trackerNameInput" class="tracker-name-dialog-input" type="text" autocomplete="off" />
-        <div id="archiveList" class="archive-list hidden" role="group" aria-label="Available archives"></div>
         <p id="trackerNameDialogError" class="tracker-name-dialog-error hidden" role="alert"></p>
         <div class="confirm-dialog-actions">
           <button id="cancelTrackerNameBtn" type="button" class="text-btn">Cancel</button>
@@ -126,8 +124,10 @@
         <div class="confirm-dialog-actions">
           <button id="cancelManageArchivesBtn" type="button" class="text-btn">Close</button>
           <div class="manage-archives-actions">
+            <button id="importManagedArchiveBtn" type="button" class="text-btn">Import Archive</button>
             <button id="renameManagedArchiveBtn" type="button" class="text-btn" disabled>Rename</button>
             <button id="duplicateManagedArchiveBtn" type="button" class="text-btn" disabled>Duplicate</button>
+            <button id="exportManagedArchiveBtn" type="button" class="text-btn" disabled>Export Archive</button>
             <button id="revealManagedArchiveBtn" type="button" class="text-btn" disabled>Reveal</button>
             <button id="deleteManagedArchiveBtn" type="button" class="danger-btn" disabled>Delete</button>
           </div>

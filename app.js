@@ -26,22 +26,22 @@ const trackerNameDialogTitle = document.querySelector("#trackerNameDialogTitle")
 const trackerNameDialogMessage = document.querySelector("#trackerNameDialogMessage");
 const trackerNameDialogLabel = document.querySelector(".tracker-name-dialog-label");
 const trackerNameInput = document.querySelector("#trackerNameInput");
-const archiveList = document.querySelector("#archiveList");
 const trackerNameDialogError = document.querySelector("#trackerNameDialogError");
 const cancelTrackerNameBtn = document.querySelector("#cancelTrackerNameBtn");
 const confirmTrackerNameBtn = document.querySelector("#confirmTrackerNameBtn");
 const trackerNameEl = document.querySelector("#trackerName");
 const trackerStatusEl = document.querySelector("#trackerStatus");
 const newTrackerBtn = document.querySelector("#newTrackerBtn");
-const openTrackerBtn = document.querySelector("#openTrackerBtn");
 const manageArchivesBtn = document.querySelector("#manageArchivesBtn");
 const saveAsTrackerBtn = document.querySelector("#saveAsTrackerBtn");
 const manageArchivesDialog = document.querySelector("#manageArchivesDialog");
 const manageArchivesList = document.querySelector("#manageArchivesList");
 const cancelManageArchivesBtn = document.querySelector("#cancelManageArchivesBtn");
 const openManagedArchiveBtn = document.querySelector("#openManagedArchiveBtn");
+const importManagedArchiveBtn = document.querySelector("#importManagedArchiveBtn");
 const renameManagedArchiveBtn = document.querySelector("#renameManagedArchiveBtn");
 const duplicateManagedArchiveBtn = document.querySelector("#duplicateManagedArchiveBtn");
+const exportManagedArchiveBtn = document.querySelector("#exportManagedArchiveBtn");
 const deleteManagedArchiveBtn = document.querySelector("#deleteManagedArchiveBtn");
 const revealManagedArchiveBtn = document.querySelector("#revealManagedArchiveBtn");
 
@@ -114,13 +114,14 @@ function bindEvents() {
   document.querySelector("#applyBulkBtn").addEventListener("click", applyBulkEdit);
   document.querySelector("#deleteSelectedBtn").addEventListener("click", deleteSelectedShows);
   newTrackerBtn.addEventListener("click", createTracker);
-  openTrackerBtn.addEventListener("click", openTracker);
   manageArchivesBtn.addEventListener("click", showManageArchives);
   saveAsTrackerBtn.addEventListener("click", saveTrackerAs);
   cancelManageArchivesBtn.addEventListener("click", closeManageArchives);
   openManagedArchiveBtn.addEventListener("click", openSelectedManagedArchive);
+  importManagedArchiveBtn.addEventListener("click", importArchive);
   renameManagedArchiveBtn.addEventListener("click", renameSelectedManagedArchive);
   duplicateManagedArchiveBtn.addEventListener("click", duplicateSelectedManagedArchive);
+  exportManagedArchiveBtn.addEventListener("click", exportSelectedManagedArchive);
   deleteManagedArchiveBtn.addEventListener("click", deleteSelectedManagedArchive);
   revealManagedArchiveBtn.addEventListener("click", revealSelectedManagedArchive);
   cancelDeleteBtn.addEventListener("click", () => resolveDeleteConfirmation(false));
@@ -155,7 +156,7 @@ function saveShows() {
 
 function requireActiveTracker() {
   if (activeTracker) return true;
-  toast("Create or open an archive before adding shows");
+  toast("Create or select an archive before adding shows");
   return false;
 }
 
@@ -201,12 +202,12 @@ function clearTrackerSelectionState() {
 function renderTrackerState() {
   if (!activeTracker) {
     trackerNameEl.textContent = "No archive open";
-    trackerStatusEl.textContent = "Create or open an archive to begin";
+    trackerStatusEl.textContent = "Create or select an archive to begin";
     saveAsTrackerBtn.disabled = true;
     fileInput.disabled = true;
     dropzone.classList.add("is-disabled");
     dropzone.setAttribute("aria-disabled", "true");
-    dropzoneText.innerHTML = "<strong>Create or open an archive first</strong><br />then import .rpp or .csv files";
+    dropzoneText.innerHTML = "<strong>Create or select an archive first</strong><br />then import .rpp or .csv files";
     return;
   }
 
@@ -280,8 +281,6 @@ function requestManagedTrackerName({ title, message = "", defaultName = "", subm
     trackerNameDialogMessage.classList.toggle("hidden", !message);
     trackerNameDialogLabel.classList.remove("hidden");
     trackerNameInput.classList.remove("hidden");
-    archiveList.classList.add("hidden");
-    archiveList.innerHTML = "";
     trackerNameInput.value = defaultName;
     trackerNameDialogError.textContent = "";
     trackerNameDialogError.classList.add("hidden");
@@ -291,45 +290,6 @@ function requestManagedTrackerName({ title, message = "", defaultName = "", subm
     requestAnimationFrame(() => {
       trackerNameInput.focus();
       trackerNameInput.select();
-    });
-  });
-}
-
-function requestManagedArchiveSelection(archiveNames) {
-  return new Promise((resolve) => {
-    pendingTrackerNameDialog = resolve;
-    dialogReturnFocus = document.activeElement;
-    trackerNameDialogTitle.textContent = "Open Archive";
-    trackerNameDialogMessage.textContent = "";
-    trackerNameDialogMessage.classList.add("hidden");
-    trackerNameDialogLabel.classList.add("hidden");
-    trackerNameInput.classList.add("hidden");
-    trackerNameDialogError.textContent = "";
-    trackerNameDialogError.classList.add("hidden");
-    confirmTrackerNameBtn.classList.add("hidden");
-    archiveList.innerHTML = "";
-
-    if (!archiveNames.length) {
-      const emptyState = document.createElement("div");
-      emptyState.className = "archive-list-empty";
-      emptyState.textContent = "No archives available";
-      archiveList.append(emptyState);
-    } else {
-      archiveNames.forEach((name) => {
-        const archiveButton = document.createElement("button");
-        archiveButton.type = "button";
-        archiveButton.className = "archive-list-item";
-        archiveButton.textContent = trackerDisplayName(name);
-        archiveButton.addEventListener("click", () => resolveTrackerNameDialog(name));
-        archiveList.append(archiveButton);
-      });
-    }
-
-    archiveList.classList.remove("hidden");
-    trackerNameDialog.classList.remove("hidden");
-    requestAnimationFrame(() => {
-      const firstArchiveButton = archiveList.querySelector(".archive-list-item");
-      (firstArchiveButton || cancelTrackerNameBtn).focus();
     });
   });
 }
@@ -379,6 +339,108 @@ async function managedTrackerNameExists(name) {
   return trackerNames.some((existingName) => existingName.toLowerCase() === name.toLowerCase());
 }
 
+function nativeDialog() {
+  const dialog = window.__TAURI__?.dialog;
+  if (!dialog?.open || !dialog?.save) throw new Error("Archive import and export require the Tauri desktop app");
+  return dialog;
+}
+
+function archiveNameFromPath(path) {
+  return String(path).split(/[\\/]/).pop() || "";
+}
+
+async function requestImportArchiveName(defaultName) {
+  let name = defaultName;
+  while (await managedTrackerNameExists(name)) {
+    name = await requestManagedTrackerName({
+      title: "Import Archive",
+      message: `An archive named ${trackerDisplayName(name)} already exists. Choose a different name.`,
+      defaultName: trackerDisplayName(name),
+      submitLabel: "Import",
+    });
+    if (!name) return null;
+  }
+  return name;
+}
+
+async function importArchive() {
+  try {
+    const sourcePath = await nativeDialog().open({
+      title: "Import Archive",
+      multiple: false,
+      directory: false,
+      filters: [{ name: "Setlist Archive", extensions: ["setlistarchive"] }],
+    });
+    if (!sourcePath || Array.isArray(sourcePath)) return;
+
+    const defaultName = archiveNameFromPath(sourcePath);
+    if (!/\.setlistarchive$/i.test(defaultName)) {
+      toast("Choose a .setlistarchive file");
+      return;
+    }
+
+    const importedTracker = await trackerPersistence.readTrackerFile(sourcePath);
+    const name = await requestImportArchiveName(ensureTrackerExtension(defaultName));
+    if (!name) return;
+
+    await trackerPersistence.writeManagedTrackerFile(
+      name,
+      importedTracker.shows,
+      importedTracker.createdAt,
+      importedTracker.updatedAt,
+    );
+    selectedManagedArchiveName = name;
+    await refreshManageArchives();
+    toast(`Imported ${trackerDisplayName(name)}`);
+  } catch (error) {
+    console.error("Failed to import archive", error);
+    toast("Could not import archive. The current archive was not changed.");
+  }
+}
+
+async function exportSelectedManagedArchive() {
+  const name = selectedManagedArchiveName;
+  if (!name) return;
+
+  try {
+    const destinationPath = await nativeDialog().save({
+      title: "Export Archive",
+      defaultPath: name,
+      filters: [{ name: "Setlist Archive", extensions: ["setlistarchive"] }],
+    });
+    if (!destinationPath) return;
+
+    let tracker;
+    if (name === activeTracker?.name) {
+      if (!(await waitForActiveTrackerSaves())) return;
+      tracker = {
+        shows,
+        createdAt: activeTracker.createdAt,
+        updatedAt: Date.now(),
+      };
+    } else {
+      tracker = await trackerPersistence.readManagedTrackerFile(name);
+    }
+
+    const exportPath = ensureTrackerExtension(destinationPath);
+    await trackerPersistence.writeTrackerFile(
+      exportPath,
+      tracker.shows,
+      tracker.createdAt,
+      tracker.updatedAt,
+    );
+    toast(`Exported ${trackerDisplayName(name)}`);
+  } catch (error) {
+    console.error("Failed to export archive", error);
+    toast("Could not export archive. The current archive was not changed.");
+  }
+}
+
+async function refreshManageArchives() {
+  const archiveNames = await trackerPersistence.listManagedTrackerFiles();
+  renderManageArchives(archiveNames);
+}
+
 async function createTracker() {
   const name = await requestManagedTrackerName({
     title: "New Archive",
@@ -399,19 +461,6 @@ async function createTracker() {
   } catch (error) {
     console.error("Failed to create tracker", error);
     toast("Could not create archive. The current archive was not changed.");
-  }
-}
-
-async function openTracker() {
-  try {
-    const archiveNames = await trackerPersistence.listManagedTrackerFiles();
-    const selectedName = await requestManagedArchiveSelection(archiveNames);
-    if (!selectedName) return;
-    if (!(await switchToManagedArchive(selectedName))) return;
-    toast(`Opened ${trackerDisplayName(selectedName)}`);
-  } catch (error) {
-    console.error("Failed to open tracker", error);
-    toast("Could not open archive. The current archive was not changed.");
   }
 }
 
@@ -481,6 +530,7 @@ function renderManageArchives(archiveNames) {
   openManagedArchiveBtn.disabled = !hasSelection;
   renameManagedArchiveBtn.disabled = !hasSelection;
   duplicateManagedArchiveBtn.disabled = !hasSelection;
+  exportManagedArchiveBtn.disabled = !hasSelection;
   deleteManagedArchiveBtn.disabled = !hasSelection;
   revealManagedArchiveBtn.disabled = !hasSelection;
 }
