@@ -58,7 +58,7 @@ let dialogReturnFocus = null;
 let importHighlightTimer = null;
 let highlightedImportedShow = null;
 
-const RECORDING_PASS_SYNC_TOLERANCE_SECONDS = 0.25;
+const SET_BOUNDARY_SYNC_TOLERANCE_SECONDS = 0.75;
 
 bindEvents();
 renderAll();
@@ -819,6 +819,57 @@ function parseCsv(text) {
   return markers;
 }
 
+function clusterRecordingTimestamps(timestamps) {
+  const clusters = [];
+  timestamps.slice().sort((left, right) => left - right).forEach((timestamp) => {
+    const cluster = clusters.find((candidate) => (
+      Math.abs(timestamp - candidate.referenceTime) <= SET_BOUNDARY_SYNC_TOLERANCE_SECONDS
+    ));
+
+    if (cluster) {
+      cluster.times.push(timestamp);
+      return;
+    }
+
+    clusters.push({
+      referenceTime: timestamp,
+      times: [timestamp],
+    });
+  });
+
+  return clusters.map((cluster) => ({
+    time: cluster.times.reduce((sum, timestamp) => sum + timestamp, 0) / cluster.times.length,
+  }));
+}
+
+function recordingTimestampSupport(intervals, time, field) {
+  const tracks = new Set();
+  intervals.forEach((interval) => {
+    if (Math.abs(interval[field] - time) <= SET_BOUNDARY_SYNC_TOLERANCE_SECONDS) {
+      tracks.add(interval.track);
+    }
+  });
+  return tracks.size;
+}
+
+function chooseRecordingEnvelopeCluster(clusters, intervals, field, requiredSupport, direction) {
+  const supportedClusters = clusters.filter((cluster) => (
+    recordingTimestampSupport(intervals, cluster.time, field) >= requiredSupport
+  ));
+  if (supportedClusters.length) {
+    return direction === "latest" ? supportedClusters[supportedClusters.length - 1] : supportedClusters[0];
+  }
+
+  return clusters
+    .slice()
+    .sort((left, right) => {
+      const supportDifference = recordingTimestampSupport(intervals, right.time, field)
+        - recordingTimestampSupport(intervals, left.time, field);
+      if (supportDifference) return supportDifference;
+      return direction === "latest" ? right.time - left.time : left.time - right.time;
+    })[0];
+}
+
 function detectRecordingPasses(items) {
   if (!items || !items.length) return [];
 
@@ -837,51 +888,47 @@ function detectRecordingPasses(items) {
 
   if (!intervals.length) return [];
 
-  const groups = [];
-  intervals.forEach((interval) => {
-    const group = groups.find((candidate) => (
-      Math.abs(interval.start - candidate.referenceStart) <= RECORDING_PASS_SYNC_TOLERANCE_SECONDS
-      && Math.abs(interval.end - candidate.referenceEnd) <= RECORDING_PASS_SYNC_TOLERANCE_SECONDS
-    ));
+  const participatingTrackCount = new Set(intervals.map((interval) => interval.track)).size;
+  const requiredSupport = Math.max(3, Math.ceil(participatingTrackCount * 0.5));
+  const startCluster = chooseRecordingEnvelopeCluster(
+    clusterRecordingTimestamps(intervals.map((interval) => interval.start)),
+    intervals,
+    "start",
+    requiredSupport,
+    "earliest",
+  );
+  const endCluster = chooseRecordingEnvelopeCluster(
+    clusterRecordingTimestamps(intervals.map((interval) => interval.end)),
+    intervals,
+    "end",
+    requiredSupport,
+    "latest",
+  );
+  if (!startCluster || !endCluster || endCluster.time <= startCluster.time) return [];
 
-    if (group) {
-      group.intervals.push(interval);
-      group.start = Math.min(group.start, interval.start);
-      group.end = Math.max(group.end, interval.end);
-      return;
-    }
+  const recordingStart = startCluster.time;
+  const recordingEnd = endCluster.time;
+  const boundaries = clusterRecordingTimestamps(intervals.flatMap((interval) => [interval.start, interval.end]))
+    .map((cluster) => cluster.time)
+    .filter((boundary) => (
+      boundary > recordingStart + SET_BOUNDARY_SYNC_TOLERANCE_SECONDS
+      && boundary < recordingEnd - SET_BOUNDARY_SYNC_TOLERANCE_SECONDS
+    ))
+    .filter((boundary) => {
+      return recordingTimestampSupport(intervals, boundary, "end") >= requiredSupport
+        && recordingTimestampSupport(intervals, boundary, "start") >= requiredSupport;
+    })
+    .sort((left, right) => left - right);
 
-    groups.push({
-      start: interval.start,
-      end: interval.end,
-      referenceStart: interval.start,
-      referenceEnd: interval.end,
-      intervals: [interval],
-    });
+  const segmentBoundaries = [recordingStart, ...boundaries, recordingEnd];
+  return segmentBoundaries.slice(0, -1).map((start, index) => {
+    const end = segmentBoundaries[index + 1];
+    return {
+      start,
+      end,
+      duration: end - start,
+    };
   });
-
-  const synchronizedGroups = groups.filter((group) => {
-    const tracks = new Set(group.intervals.map((interval) => interval.track));
-    return tracks.size >= 2;
-  });
-
-  const detectedGroups = synchronizedGroups.length
-    ? synchronizedGroups
-    : groups.length === 1
-      ? groups
-      : [{
-        start: Math.min(...intervals.map((interval) => interval.start)),
-        end: Math.max(...intervals.map((interval) => interval.end)),
-        intervals,
-      }];
-
-  return detectedGroups
-    .sort((left, right) => left.start - right.start)
-    .map((group) => ({
-      start: group.start,
-      end: group.end,
-      duration: group.end - group.start,
-    }));
 }
 
 function levenshtein(a, b) {
@@ -1439,6 +1486,7 @@ function computeStats() {
   shows.forEach((show) => {
     if (!show.items?.length) return;
     const passes = detectRecordingPasses(show.items);
+    if (!passes.length) return;
     const total = passes.reduce((sum, pass) => sum + pass.duration, 0);
     totalShowLength += total;
     showsWithLength += 1;
