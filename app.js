@@ -1268,13 +1268,27 @@ function focusShow(id) {
   });
 }
 
+function restoreEditedShow(id, wasExpanded) {
+  requestAnimationFrame(() => {
+    const card = document.querySelector(`.show-card[data-id="${CSS.escape(id)}"]`);
+    if (!card || !wasExpanded) return;
+
+    card.classList.add("open");
+    card.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  });
+}
+
 function updateShowField(id, field, value) {
   const show = shows.find((item) => item.id === id);
   if (!show) return;
+  const wasExpanded = document.querySelector(`.show-card[data-id="${CSS.escape(id)}"]`)?.classList.contains("open");
   show[field] = value;
   saveShows();
   renderAll();
-  reopenShow(id);
+  restoreEditedShow(id, wasExpanded);
 }
 
 function removeShow(id) {
