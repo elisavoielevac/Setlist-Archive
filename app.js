@@ -877,18 +877,24 @@ function getCountedSongMarkers(show) {
 
 function parseShowNameMeta(filename) {
   const base = filename.replace(/\.(rpp|csv|txt)$/i, "");
-  const match = base.match(/^(\d{4})(\d{2})(\d{2})[_\-\s]+(.+)$/);
+  const match = base.match(/^(\d{4})(?:(\d{2})(\d{2})|-(\d{2})-(\d{2}))[_\-\s]+(.+)$/);
   if (match) {
-    const [, year, month, day, rest] = match;
+    const [, year, compactMonth, compactDay, isoMonth, isoDay, rawRest] = match;
+    const month = compactMonth || isoMonth;
+    const day = compactDay || isoDay;
     const date = `${year}-${month}-${day}`;
-    const venue = rest.replace(/[_-]+/g, " ").trim();
+    const venue = cleanFilenameText(rawRest);
     return {
       date: dateValueKind(date) === "valid" ? date : "",
       venue,
-      name: venue || base.replace(/[_-]+/g, " ").trim(),
+      name: venue || cleanFilenameText(base),
     };
   }
-  return { date: "", venue: "", name: base.replace(/[_-]+/g, " ").trim() };
+  return { date: "", venue: "", name: cleanFilenameText(base) };
+}
+
+function cleanFilenameText(value) {
+  return String(value || "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function parseRppFull(text) {
