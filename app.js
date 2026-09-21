@@ -58,6 +58,8 @@ let dialogReturnFocus = null;
 let importHighlightTimer = null;
 let highlightedImportedShow = null;
 
+const RECORDING_PASS_SYNC_TOLERANCE_SECONDS = 0.25;
+
 bindEvents();
 renderAll();
 void restoreLastTracker();
@@ -817,39 +819,69 @@ function parseCsv(text) {
   return markers;
 }
 
-function computeSetsFromItems(items, numSets) {
+function detectRecordingPasses(items) {
   if (!items || !items.length) return [];
-  numSets = numSets || 2;
 
-  const relevant = items.filter((item) => item.track !== 0);
-  const pool = relevant.length ? relevant : items;
-  const overallStart = Math.min(...pool.map((item) => item.position));
-  const overallEnd = Math.max(...pool.map((item) => item.position + item.length));
-  const totalSpan = overallEnd - overallStart;
-  const tolerance = Math.max(5, totalSpan * 0.02);
+  const intervals = items
+    .map((item) => ({
+      start: Number(item.position),
+      end: Number(item.position) + Number(item.length),
+      track: item.track ?? null,
+    }))
+    .filter((item) => (
+      Number.isFinite(item.start)
+      && Number.isFinite(item.end)
+      && item.end > item.start
+    ))
+    .sort((left, right) => left.start - right.start || left.end - right.end);
 
-  const byTrack = {};
-  pool.forEach((item) => {
-    const key = item.track ?? -1;
-    (byTrack[key] = byTrack[key] || []).push(item);
-  });
+  if (!intervals.length) return [];
 
-  let best = null;
-  Object.keys(byTrack).forEach((key) => {
-    const trackItems = byTrack[key].slice().sort((a, b) => a.position - b.position);
-    if (trackItems.length !== numSets) return;
+  const groups = [];
+  intervals.forEach((interval) => {
+    const group = groups.find((candidate) => (
+      Math.abs(interval.start - candidate.referenceStart) <= RECORDING_PASS_SYNC_TOLERANCE_SECONDS
+      && Math.abs(interval.end - candidate.referenceEnd) <= RECORDING_PASS_SYNC_TOLERANCE_SECONDS
+    ));
 
-    const start = trackItems[0].position;
-    const last = trackItems[trackItems.length - 1];
-    const end = last.position + last.length;
-    if (Math.abs(start - overallStart) <= tolerance && Math.abs(end - overallEnd) <= tolerance) {
-      const coverage = end - start;
-      if (!best || coverage > best.coverage) best = { trackItems, coverage };
+    if (group) {
+      group.intervals.push(interval);
+      group.start = Math.min(group.start, interval.start);
+      group.end = Math.max(group.end, interval.end);
+      return;
     }
+
+    groups.push({
+      start: interval.start,
+      end: interval.end,
+      referenceStart: interval.start,
+      referenceEnd: interval.end,
+      intervals: [interval],
+    });
   });
 
-  if (best) return best.trackItems.map((item) => item.length);
-  return [totalSpan];
+  const synchronizedGroups = groups.filter((group) => {
+    const tracks = new Set(group.intervals.map((interval) => interval.track));
+    return tracks.size >= 2;
+  });
+
+  const detectedGroups = synchronizedGroups.length
+    ? synchronizedGroups
+    : groups.length === 1
+      ? groups
+      : [{
+        start: Math.min(...intervals.map((interval) => interval.start)),
+        end: Math.max(...intervals.map((interval) => interval.end)),
+        intervals,
+      }];
+
+  return detectedGroups
+    .sort((left, right) => left.start - right.start)
+    .map((group) => ({
+      start: group.start,
+      end: group.end,
+      duration: group.end - group.start,
+    }));
 }
 
 function levenshtein(a, b) {
@@ -919,7 +951,6 @@ function addMarkersAsShow(filename, markers, items) {
     notes: "",
     markers,
     items,
-    numSets: 2,
     addedAt: Date.now(),
   };
 
@@ -1030,13 +1061,13 @@ async function setupTauriFileDrop() {
 
 function renderRecordingLength(show) {
   if (!show.items || !show.items.length) return "";
-  const numSets = show.numSets || 2;
-  const blocks = computeSetsFromItems(show.items, numSets);
-  const total = blocks.reduce((sum, value) => sum + value, 0);
-  const rows = blocks.map((duration, index) => `
+  const passes = detectRecordingPasses(show.items);
+  if (!passes.length) return "";
+  const total = passes.reduce((sum, pass) => sum + pass.duration, 0);
+  const rows = passes.map((pass, index) => `
     <div class="row">
       <span>Set ${index + 1}</span>
-      <span class="row-time">${fmtTime(duration)}</span>
+      <span class="row-time">${fmtTime(pass.duration)}</span>
     </div>
   `).join("");
 
@@ -1044,9 +1075,6 @@ function renderRecordingLength(show) {
     <div class="length-box">
       <div class="length-head">
         <span class="length-label">Recording length</span>
-        <label class="length-sets"># of sets
-          <input type="number" min="1" max="8" value="${numSets}" data-num-sets />
-        </label>
       </div>
       ${rows}
       <div class="row is-total">
@@ -1147,11 +1175,6 @@ function onShowListChange(event) {
     return;
   }
 
-  if (event.target.matches("[data-num-sets]")) {
-    updateNumSets(id, event.target.value);
-    return;
-  }
-
   if (event.target.matches("[data-field]")) {
     updateShowField(id, event.target.dataset.field, event.target.value);
   }
@@ -1178,16 +1201,6 @@ function updateShowField(id, field, value) {
   const show = shows.find((item) => item.id === id);
   if (!show) return;
   show[field] = value;
-  saveShows();
-  renderAll();
-  reopenShow(id);
-}
-
-function updateNumSets(id, value) {
-  const show = shows.find((item) => item.id === id);
-  if (!show) return;
-  const parsed = Number.parseInt(value, 10);
-  show.numSets = Number.isNaN(parsed) || parsed < 1 ? 2 : parsed;
   saveShows();
   renderAll();
   reopenShow(id);
@@ -1425,11 +1438,11 @@ function computeStats() {
 
   shows.forEach((show) => {
     if (!show.items?.length) return;
-    const blocks = computeSetsFromItems(show.items, show.numSets || 2);
-    const total = blocks.reduce((sum, value) => sum + value, 0);
+    const passes = detectRecordingPasses(show.items);
+    const total = passes.reduce((sum, pass) => sum + pass.duration, 0);
     totalShowLength += total;
     showsWithLength += 1;
-    allSetLengths.push(...blocks);
+    allSetLengths.push(...passes.map((pass) => pass.duration));
     if (!longest || total > longest.total) longest = { show, total };
     if (!shortest || total < shortest.total) shortest = { show, total };
   });
