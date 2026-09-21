@@ -441,7 +441,12 @@ textarea:focus {
 
 .show-card {
   overflow: hidden;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.show-card.open {
+  border-color: rgba(61, 220, 151, 0.45);
+  background: var(--panel-2);
 }
 
 .show-card.is-import-highlighted {
