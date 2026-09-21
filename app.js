@@ -55,6 +55,8 @@ let trackerSaveStatus = "saved";
 let trackerSaveRevision = 0;
 let selectedManagedArchiveName = null;
 let dialogReturnFocus = null;
+let importHighlightTimer = null;
+let highlightedImportedShow = null;
 
 bindEvents();
 renderAll();
@@ -899,11 +901,11 @@ function fuzzyScore(target, query) {
 }
 
 function addMarkersAsShow(filename, markers, items) {
-  if (!requireActiveTracker()) return;
+  if (!requireActiveTracker()) return null;
   items = items || [];
   if (!markers.length && !items.length) {
     toast(`No markers or audio found in ${filename}`);
-    return;
+    return null;
   }
 
   const meta = parseShowNameMeta(filename);
@@ -925,29 +927,60 @@ function addMarkersAsShow(filename, markers, items) {
   saveShows();
   renderAll();
   toast(`Added "${show.name}" — ${markers.length} song${markers.length === 1 ? "" : "s"}`);
+  return show;
 }
 
-function handleFiles(fileList) {
+async function handleFiles(fileList) {
   if (!requireActiveTracker() || !fileList?.length) return;
 
-  [...fileList].forEach((file) => {
+  const importedShows = await Promise.all([...fileList].map((file) => new Promise((resolve) => {
     const reader = new FileReader();
-    reader.addEventListener("error", () => toast(`Could not read ${file.name}`));
+    reader.addEventListener("error", () => {
+      toast(`Could not read ${file.name}`);
+      resolve(null);
+    });
     reader.addEventListener("load", (event) => {
       const text = typeof event.target.result === "string" ? event.target.result : "";
-      importFileText(file.name, text);
+      resolve(importFileText(file.name, text));
     });
     reader.readAsText(file);
-  });
+  })));
+
+  finishImportedShowBatch(importedShows);
 }
 
 function importFileText(filename, text) {
   if (/\.csv$/i.test(filename)) {
-    addMarkersAsShow(filename, parseCsv(text), []);
-    return;
+    return addMarkersAsShow(filename, parseCsv(text), []);
   }
   const parsed = parseRppFull(text);
-  addMarkersAsShow(filename, parsed.markers, parsed.items);
+  return addMarkersAsShow(filename, parsed.markers, parsed.items);
+}
+
+function finishImportedShowBatch(importedShows) {
+  const successfulShows = importedShows.filter(Boolean);
+  const lastImportedShow = successfulShows[successfulShows.length - 1];
+  if (!lastImportedShow) return;
+
+  renderAll();
+  requestAnimationFrame(() => highlightImportedShow(lastImportedShow.id));
+}
+
+function highlightImportedShow(showId) {
+  if (importHighlightTimer) clearTimeout(importHighlightTimer);
+  highlightedImportedShow?.classList.remove("is-import-highlighted");
+
+  const card = document.querySelector(`.show-card[data-id="${CSS.escape(showId)}"]`);
+  if (!card) return;
+
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.classList.add("is-import-highlighted");
+  highlightedImportedShow = card;
+  importHighlightTimer = setTimeout(() => {
+    card.classList.remove("is-import-highlighted");
+    if (highlightedImportedShow === card) highlightedImportedShow = null;
+    importHighlightTimer = null;
+  }, 1600);
 }
 
 async function setupTauriFileDrop() {
@@ -973,18 +1006,21 @@ async function setupTauriFileDrop() {
 
       const paths = event.payload.paths || [];
       console.info("[Tauri drop] Native drop received", paths);
-      await Promise.all(paths.map(async (path) => {
+      const importedShows = await Promise.all(paths.map(async (path) => {
         const filename = path.split(/[\\/]/).pop() || path;
         try {
           const text = await invoke("read_text_file", { path });
           console.info(`[Tauri drop] Read ${filename}; importing with the existing parser.`);
-          importFileText(filename, text);
+          const importedShow = importFileText(filename, text);
           console.info(`[Tauri drop] Imported ${filename}.`);
+          return importedShow;
         } catch (error) {
           console.error(`[Tauri drop] Failed to read ${filename}`, error);
           toast(`Could not read ${filename}`);
+          return null;
         }
       }));
+      finishImportedShowBatch(importedShows);
     });
     console.info("[Tauri drop] Native drop listener registered.");
   } catch (error) {
@@ -1038,7 +1074,7 @@ function renderShows() {
   if (!shows.length) {
     showList.innerHTML = activeTracker
       ? `<div class="empty">No shows yet — drop a Reaper project or marker CSV above to get started.</div>`
-      : `<div class="empty">Create a new archive or open an existing archive to get started.</div>`;
+      : `<div class="empty">Create or select an archive to get started.</div>`;
     return;
   }
 
