@@ -34,6 +34,7 @@ const trackerStatusEl = document.querySelector("#trackerStatus");
 const newTrackerBtn = document.querySelector("#newTrackerBtn");
 const manageArchivesBtn = document.querySelector("#manageArchivesBtn");
 const ignoredSongsBtn = document.querySelector("#ignoredSongsBtn");
+const themeToggleBtn = document.querySelector("#themeToggleBtn");
 const manageArchivesDialog = document.querySelector("#manageArchivesDialog");
 const manageArchivesList = document.querySelector("#manageArchivesList");
 const cancelManageArchivesBtn = document.querySelector("#cancelManageArchivesBtn");
@@ -64,12 +65,18 @@ let importHighlightTimer = null;
 let highlightedImportedShow = null;
 let searchFocusTimer = null;
 let highlightedSearchShow = null;
+let activeTheme = "dark";
 
 const SET_BOUNDARY_SYNC_TOLERANCE_SECONDS = 0.75;
 
 bindEvents();
-renderAll();
-void restoreLastTracker();
+void initializeApp();
+
+async function initializeApp() {
+  await restoreTheme();
+  renderAll();
+  await restoreLastTracker();
+}
 
 function bindEvents() {
   fileInput.addEventListener("change", (event) => {
@@ -126,6 +133,7 @@ function bindEvents() {
   newTrackerBtn.addEventListener("click", createTracker);
   manageArchivesBtn.addEventListener("click", showManageArchives);
   ignoredSongsBtn.addEventListener("click", showIgnoredSongs);
+  themeToggleBtn.addEventListener("click", toggleTheme);
   cancelManageArchivesBtn.addEventListener("click", closeManageArchives);
   cancelIgnoredSongsBtn.addEventListener("click", closeIgnoredSongs);
   openManagedArchiveBtn.addEventListener("click", openSelectedManagedArchive);
@@ -168,6 +176,37 @@ function bindEvents() {
     const button = event.target.closest("[data-action='unignore']");
     if (button) unignoreSongAt(Number(button.dataset.index));
   });
+}
+
+function applyTheme(theme) {
+  activeTheme = theme === "light" ? "light" : "dark";
+  document.documentElement.dataset.theme = activeTheme;
+  const nextTheme = activeTheme === "dark" ? "light" : "dark";
+  themeToggleBtn.textContent = nextTheme === "light" ? "Light" : "Dark";
+  themeToggleBtn.setAttribute("aria-label", `Switch to ${nextTheme} theme`);
+  themeToggleBtn.setAttribute("aria-pressed", String(activeTheme === "light"));
+}
+
+async function restoreTheme() {
+  applyTheme("dark");
+  if (!window.__TAURI__?.core?.invoke) return;
+  try {
+    applyTheme(await trackerPersistence.readThemePreference());
+  } catch (error) {
+    console.error("Failed to load the theme preference", error);
+  }
+}
+
+async function toggleTheme() {
+  const nextTheme = activeTheme === "dark" ? "light" : "dark";
+  applyTheme(nextTheme);
+  if (!window.__TAURI__?.core?.invoke) return;
+  try {
+    await trackerPersistence.writeThemePreference(nextTheme);
+  } catch (error) {
+    console.error("Failed to save the theme preference", error);
+    toast("Theme preference could not be saved.");
+  }
 }
 
 function saveShows() {

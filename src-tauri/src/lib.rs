@@ -171,6 +171,26 @@ fn clear_last_tracker_name(app: AppHandle) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+fn read_theme_preference(app: AppHandle) -> Result<Option<String>, String> {
+    let path = theme_preference_path(&app)?;
+    match fs::read_to_string(path) {
+        Ok(theme) if theme == "dark" || theme == "light" => Ok(Some(theme)),
+        Ok(_) => Ok(None),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+#[tauri::command]
+fn write_theme_preference(app: AppHandle, theme: String) -> Result<(), String> {
+    if theme != "dark" && theme != "light" {
+        return Err("Theme must be dark or light".into());
+    }
+    let preference_path = theme_preference_path(&app)?;
+    write_file_atomically(&preference_path, theme.as_bytes()).map_err(|error| error.to_string())
+}
+
 fn app_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let directory = app
         .path()
@@ -182,6 +202,10 @@ fn app_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
 
 fn last_tracker_name_preference_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(app_data_dir(app)?.join("last-tracker-name"))
+}
+
+fn theme_preference_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app_data_dir(app)?.join("theme-preference"))
 }
 
 fn clear_legacy_last_tracker_path(app: &AppHandle) -> Result<(), String> {
@@ -420,7 +444,9 @@ pub fn run() {
             list_managed_tracker_files,
             read_last_tracker_name,
             write_last_tracker_name,
-            clear_last_tracker_name
+            clear_last_tracker_name,
+            read_theme_preference,
+            write_theme_preference
         ])
         .run(tauri::generate_context!())
         .expect("error while running Reaper Setlist Archive");

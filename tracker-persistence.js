@@ -151,6 +151,14 @@
     await tauriInvoke()("clear_last_tracker_name");
   }
 
+  async function readThemePreference() {
+    return tauriInvoke()("read_theme_preference");
+  }
+
+  async function writeThemePreference(theme) {
+    await tauriInvoke()("write_theme_preference", { theme });
+  }
+
   window.trackerPersistence = {
     validateTrackerData,
     parseTrackerFile,
@@ -170,5 +178,7 @@
     readLastTrackerName,
     writeLastTrackerName,
     clearLastTrackerName,
+    readThemePreference,
+    writeThemePreference,
   };
 })();
