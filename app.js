@@ -170,7 +170,7 @@ function queueActiveTrackerSave() {
   trackerSaveStatus = "saving";
   renderTrackerState();
 
-  trackerPersistence.queueManagedTrackerFileWrite(tracker.name, shows, tracker.createdAt).then(
+  trackerPersistence.queueManagedTrackerFileWrite(tracker.name, shows, tracker.createdAt, undefined, tracker.ignoredSongNames).then(
     () => {
       if (activeTracker === tracker && saveRevision === trackerSaveRevision) {
         trackerSaveStatus = "saved";
@@ -227,7 +227,11 @@ function renderTrackerState() {
 }
 
 async function activateTracker(name, tracker) {
-  activeTracker = { name, createdAt: tracker.createdAt };
+  activeTracker = {
+    name,
+    createdAt: tracker.createdAt,
+    ignoredSongNames: Array.isArray(tracker.ignoredSongNames) ? tracker.ignoredSongNames : [],
+  };
   trackerSaveStatus = "saved";
   trackerSaveRevision += 1;
   trackerPersistence.clearTrackerWriteError();
@@ -390,6 +394,7 @@ async function importArchive() {
       importedTracker.shows,
       importedTracker.createdAt,
       importedTracker.updatedAt,
+      importedTracker.ignoredSongNames,
     );
     selectedManagedArchiveName = name;
     await refreshManageArchives();
@@ -419,6 +424,7 @@ async function exportSelectedManagedArchive() {
         shows,
         createdAt: activeTracker.createdAt,
         updatedAt: Date.now(),
+        ignoredSongNames: activeTracker.ignoredSongNames,
       };
     } else {
       tracker = await trackerPersistence.readManagedTrackerFile(name);
@@ -430,6 +436,7 @@ async function exportSelectedManagedArchive() {
       tracker.shows,
       tracker.createdAt,
       tracker.updatedAt,
+      tracker.ignoredSongNames,
     );
     toast(`Exported ${trackerDisplayName(name)}`);
   } catch (error) {
@@ -457,7 +464,7 @@ async function createTracker() {
       toast("An archive with that name already exists");
       return;
     }
-    const tracker = await trackerPersistence.writeManagedTrackerFile(name, [], now, now);
+    const tracker = await trackerPersistence.writeManagedTrackerFile(name, [], now, now, []);
     await activateTracker(name, tracker);
     toast(`Created ${trackerDisplayName(name)}`);
   } catch (error) {
@@ -621,10 +628,20 @@ async function duplicateSelectedManagedArchive() {
     }
 
     const source = sourceName === activeTracker?.name
-      ? { shows, createdAt: activeTracker.createdAt }
+      ? {
+        shows,
+        createdAt: activeTracker.createdAt,
+        ignoredSongNames: activeTracker.ignoredSongNames,
+      }
       : await trackerPersistence.readManagedTrackerFile(sourceName);
     const now = Date.now();
-    const tracker = await trackerPersistence.writeManagedTrackerFile(name, source.shows, source.createdAt, now);
+    const tracker = await trackerPersistence.writeManagedTrackerFile(
+      name,
+      source.shows,
+      source.createdAt,
+      now,
+      source.ignoredSongNames,
+    );
     await activateTracker(name, tracker);
     selectedManagedArchiveName = name;
     const archiveNames = await trackerPersistence.listManagedTrackerFiles();
@@ -757,6 +774,22 @@ function dateInputToIso(value) {
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw) && dateValueKind(raw) === "valid") return raw;
   return null;
+}
+
+function normalizeSongName(name) {
+  return String(name || "").trim().toLowerCase();
+}
+
+function isSongIgnored(name) {
+  const normalizedName = normalizeSongName(name);
+  if (!normalizedName) return false;
+  return (activeTracker?.ignoredSongNames || []).some((ignoredName) => (
+    normalizeSongName(ignoredName) === normalizedName
+  ));
+}
+
+function getCountedSongMarkers(show) {
+  return (show.markers || []).filter((marker) => !isSongIgnored(marker.name));
 }
 
 function parseShowNameMeta(filename) {
@@ -1072,7 +1105,8 @@ function addMarkersAsShow(filename, markers, items, sourceFingerprint, batchFing
   shows.unshift(show);
   saveShows();
   renderAll();
-  toast(`Added "${show.name}" — ${markers.length} song${markers.length === 1 ? "" : "s"}`);
+  const countedMarkerCount = getCountedSongMarkers(show).length;
+  toast(`Added "${show.name}" — ${countedMarkerCount} song${countedMarkerCount === 1 ? "" : "s"}`);
   return show;
 }
 
@@ -1245,7 +1279,7 @@ function renderShows() {
           </div>
         </div>
         <div class="show-card-aside">
-          <span>${show.markers.length} song${show.markers.length === 1 ? "" : "s"}</span>
+          <span>${getCountedSongMarkers(show).length} song${getCountedSongMarkers(show).length === 1 ? "" : "s"}</span>
           <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
         </div>
       </div>
@@ -1556,7 +1590,7 @@ function renderSearch() {
 
   const songHits = [];
   shows.forEach((show) => {
-    show.markers.forEach((marker) => {
+    getCountedSongMarkers(show).forEach((marker) => {
       const score = fuzzyScore(marker.name, query);
       if (score !== null) songHits.push({ show, marker, score });
     });
@@ -1615,8 +1649,8 @@ function computeStats() {
   let totalMarkers = 0;
 
   shows.forEach((show) => {
-    show.markers.forEach((marker) => {
-      const key = marker.name.trim().toLowerCase();
+    getCountedSongMarkers(show).forEach((marker) => {
+      const key = normalizeSongName(marker.name);
       if (!key) return;
       songCounts[key] = songCounts[key] || { name: marker.name, count: 0 };
       songCounts[key].count += 1;

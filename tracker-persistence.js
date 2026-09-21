@@ -20,6 +20,10 @@
     if (!Array.isArray(data.shows)) {
       throw new TypeError("Archive shows must be an array");
     }
+    if (data.ignoredSongNames === undefined) data.ignoredSongNames = [];
+    if (!Array.isArray(data.ignoredSongNames)) {
+      throw new TypeError("Archive ignored song names must be an array");
+    }
     return data;
   }
 
@@ -33,13 +37,14 @@
     return validateTrackerData(data);
   }
 
-  function serializeTrackerFile(shows, createdAt = Date.now(), updatedAt = Date.now()) {
+  function serializeTrackerFile(shows, createdAt = Date.now(), updatedAt = Date.now(), ignoredSongNames = []) {
     const data = {
       format: TRACKER_FORMAT,
       schemaVersion: TRACKER_SCHEMA_VERSION,
       createdAt,
       updatedAt,
       shows,
+      ignoredSongNames,
     };
     validateTrackerData(data);
     return `${JSON.stringify(data, null, 2)}\n`;
@@ -65,14 +70,14 @@
     return parseTrackerFile(contents);
   }
 
-  async function writeTrackerFile(path, shows, createdAt, updatedAt) {
-    const contents = serializeTrackerFile(shows, createdAt, updatedAt);
+  async function writeTrackerFile(path, shows, createdAt, updatedAt, ignoredSongNames = []) {
+    const contents = serializeTrackerFile(shows, createdAt, updatedAt, ignoredSongNames);
     await tauriInvoke()("write_tracker_file_atomic", { path, contents });
     return parseTrackerFile(contents);
   }
 
-  async function writeManagedTrackerFile(name, shows, createdAt, updatedAt) {
-    const contents = serializeTrackerFile(shows, createdAt, updatedAt);
+  async function writeManagedTrackerFile(name, shows, createdAt, updatedAt, ignoredSongNames = []) {
+    const contents = serializeTrackerFile(shows, createdAt, updatedAt, ignoredSongNames);
     await tauriInvoke()("write_managed_tracker_file", { name, contents });
     return parseTrackerFile(contents);
   }
@@ -89,8 +94,8 @@
     await tauriInvoke()("reveal_managed_tracker_file", { name });
   }
 
-  function queueTrackerFileWrite(path, shows, createdAt, updatedAt = Date.now()) {
-    const contents = serializeTrackerFile(shows, createdAt, updatedAt);
+  function queueTrackerFileWrite(path, shows, createdAt, updatedAt = Date.now(), ignoredSongNames = []) {
+    const contents = serializeTrackerFile(shows, createdAt, updatedAt, ignoredSongNames);
     const write = trackerWriteQueue.then(async () => {
       await tauriInvoke()("write_tracker_file_atomic", { path, contents });
       return parseTrackerFile(contents);
@@ -107,8 +112,8 @@
     return write;
   }
 
-  function queueManagedTrackerFileWrite(name, shows, createdAt, updatedAt = Date.now()) {
-    const contents = serializeTrackerFile(shows, createdAt, updatedAt);
+  function queueManagedTrackerFileWrite(name, shows, createdAt, updatedAt = Date.now(), ignoredSongNames = []) {
+    const contents = serializeTrackerFile(shows, createdAt, updatedAt, ignoredSongNames);
     const write = trackerWriteQueue.then(async () => {
       await tauriInvoke()("write_managed_tracker_file", { name, contents });
       return parseTrackerFile(contents);
