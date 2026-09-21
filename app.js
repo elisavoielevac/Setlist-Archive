@@ -852,6 +852,11 @@ function dateInputToIso(value) {
   return null;
 }
 
+function showDateLabel(value) {
+  const date = String(value || "");
+  return dateValueKind(date) === "valid" ? isoDateToDisplay(date) : date || "no date set";
+}
+
 function normalizeSongName(name) {
   return String(name || "").trim().toLowerCase();
 }
@@ -1326,14 +1331,24 @@ function renderRecordingLength(show) {
   `;
 }
 
-function metaInput(show, field, placeholder, extraClass = "") {
-  return `<input type="text" data-field="${field}" placeholder="${placeholder}" value="${escapeHtml(show[field] || "")}" class="${extraClass}">`;
+function metaInput(show, field, label, placeholder = "", extraClass = "") {
+  return `
+    <label class="meta-field ${extraClass}">
+      <span class="meta-field-label">${label}</span>
+      <input type="text" data-field="${field}" placeholder="${placeholder}" value="${escapeHtml(show[field] || "")}" />
+    </label>
+  `;
 }
 
 function dateMetaInput(show) {
   const date = String(show.date || "");
   const displayValue = dateValueKind(date) === "valid" ? isoDateToDisplay(date) : date;
-  return `<input type="text" inputmode="numeric" data-field="date" placeholder="DD-MM-YYYY" value="${escapeHtml(displayValue)}">`;
+  return `
+    <label class="meta-field">
+      <span class="meta-field-label">Date</span>
+      <input type="text" inputmode="numeric" data-field="date" placeholder="DD-MM-YYYY" value="${escapeHtml(displayValue)}" />
+    </label>
+  `;
 }
 
 function sortedShows() {
@@ -1360,7 +1375,7 @@ function renderShows() {
           <input type="checkbox" data-action="select" ${selectedIds.has(show.id) ? "checked" : ""} />
           <div class="min-w-0">
             <div class="show-name">${escapeHtml(show.name)}</div>
-            <div class="show-meta">${escapeHtml(show.date || "no date set")}${show.venue ? ` · ${escapeHtml(show.venue)}` : ""}${show.tour ? ` · ${escapeHtml(show.tour)}` : ""}</div>
+            <div class="show-meta">${escapeHtml(showDateLabel(show.date))}${show.venue ? ` · ${escapeHtml(show.venue)}` : ""}${show.tour ? ` · ${escapeHtml(show.tour)}` : ""}</div>
           </div>
         </div>
         <div class="show-card-aside">
@@ -1373,10 +1388,13 @@ function renderShows() {
           ${dateMetaInput(show)}
           ${metaInput(show, "venue", "Venue / city")}
           ${metaInput(show, "name", "Show name")}
-          ${metaInput(show, "tour", "Tour name")}
+          ${metaInput(show, "tour", "Tour")}
         </div>
-        ${metaInput(show, "lineup", "Band lineup (comma separated)", "full")}
-        <textarea data-field="notes" placeholder="Notes about this show…" rows="2">${escapeHtml(show.notes || "")}</textarea>
+        ${metaInput(show, "lineup", "Band lineup", "Artist 1, Artist 2", "full")}
+        <label class="meta-field full">
+          <span class="meta-field-label">Notes</span>
+          <textarea data-field="notes" placeholder="Optional notes" rows="2">${escapeHtml(show.notes || "")}</textarea>
+        </label>
         ${renderRecordingLength(show)}
         ${show.markers.map((marker) => {
           const ignored = isSongIgnored(marker.name);

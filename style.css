@@ -509,9 +509,23 @@ textarea:focus {
   margin: 0.875rem 0 0.5rem;
 }
 
+.meta-field {
+  display: block;
+  min-width: 0;
+}
+
+.meta-field.full,
 .show-body .full {
   width: 100%;
   margin-bottom: 0.5rem;
+}
+
+.meta-field-label {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--dim);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
 }
 
 .show-body textarea {
