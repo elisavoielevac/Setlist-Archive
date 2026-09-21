@@ -4,6 +4,87 @@
   let trackerWriteQueue = Promise.resolve();
   let trackerWriteError = null;
 
+  function normalizeShowText(value, field, showIndex) {
+    if (value === undefined || value === null) return "";
+    if (typeof value !== "string") {
+      throw new TypeError(`Archive show ${showIndex} field ${field} must be a string`);
+    }
+    return value;
+  }
+
+  function normalizeShow(show, showIndex) {
+    if (!show || typeof show !== "object" || Array.isArray(show)) {
+      throw new TypeError(`Archive show ${showIndex} must be an object`);
+    }
+    if (typeof show.id !== "string" || !show.id.trim()) {
+      throw new TypeError(`Archive show ${showIndex} must have a valid id`);
+    }
+
+    const markers = show.markers === undefined || show.markers === null ? [] : show.markers;
+    if (!Array.isArray(markers)) {
+      throw new TypeError(`Archive show ${showIndex} markers must be an array`);
+    }
+    const normalizedMarkers = markers.map((marker, markerIndex) => {
+      if (!marker || typeof marker !== "object" || Array.isArray(marker)) {
+        throw new TypeError(`Archive show ${showIndex} marker ${markerIndex} must be an object`);
+      }
+      if (typeof marker.time !== "number" || !Number.isFinite(marker.time)) {
+        throw new TypeError(`Archive show ${showIndex} marker ${markerIndex} time must be finite`);
+      }
+      return {
+        ...marker,
+        time: marker.time,
+        name: normalizeShowText(marker.name, "marker name", `${showIndex}/${markerIndex}`),
+      };
+    });
+
+    const items = show.items === undefined || show.items === null ? [] : show.items;
+    if (!Array.isArray(items)) {
+      throw new TypeError(`Archive show ${showIndex} items must be an array`);
+    }
+    const normalizedItems = items.map((item, itemIndex) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        throw new TypeError(`Archive show ${showIndex} item ${itemIndex} must be an object`);
+      }
+      if (typeof item.position !== "number" || !Number.isFinite(item.position)) {
+        throw new TypeError(`Archive show ${showIndex} item ${itemIndex} position must be finite`);
+      }
+      if (typeof item.length !== "number" || !Number.isFinite(item.length)) {
+        throw new TypeError(`Archive show ${showIndex} item ${itemIndex} length must be finite`);
+      }
+      if (item.track !== undefined && item.track !== null
+        && (typeof item.track !== "number" || !Number.isFinite(item.track))) {
+        throw new TypeError(`Archive show ${showIndex} item ${itemIndex} track must be finite`);
+      }
+      return { ...item };
+    });
+
+    if (show.addedAt !== undefined && (typeof show.addedAt !== "number" || !Number.isFinite(show.addedAt))) {
+      throw new TypeError(`Archive show ${showIndex} addedAt must be finite`);
+    }
+
+    const normalizedShow = {
+      ...show,
+      name: normalizeShowText(show.name, "name", showIndex),
+      date: normalizeShowText(show.date, "date", showIndex),
+      venue: normalizeShowText(show.venue, "venue", showIndex),
+      tour: normalizeShowText(show.tour, "tour", showIndex),
+      lineup: normalizeShowText(show.lineup, "lineup", showIndex),
+      notes: normalizeShowText(show.notes, "notes", showIndex),
+      markers: normalizedMarkers,
+      items: normalizedItems,
+      addedAt: show.addedAt === undefined ? 0 : show.addedAt,
+    };
+
+    if (show.sourceFingerprint === null || show.sourceFingerprint === undefined) {
+      delete normalizedShow.sourceFingerprint;
+    } else if (typeof show.sourceFingerprint !== "string" || !/^sha256:[0-9a-f]{64}$/.test(show.sourceFingerprint)) {
+      throw new TypeError(`Archive show ${showIndex} sourceFingerprint is invalid`);
+    }
+
+    return normalizedShow;
+  }
+
   function validateTrackerData(data) {
     if (!data || typeof data !== "object" || Array.isArray(data)) {
       throw new TypeError("Archive data must be an object");
@@ -24,6 +105,10 @@
     if (!Array.isArray(data.ignoredSongNames)) {
       throw new TypeError("Archive ignored song names must be an array");
     }
+    if (!data.ignoredSongNames.every((name) => typeof name === "string")) {
+      throw new TypeError("Archive ignored song names must be strings");
+    }
+    data.shows = data.shows.map(normalizeShow);
     return data;
   }
 
