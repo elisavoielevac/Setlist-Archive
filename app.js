@@ -149,6 +149,8 @@ function bindEvents() {
 
   showList.addEventListener("click", onShowListClick);
   showList.addEventListener("change", onShowListChange);
+  showList.addEventListener("input", onShowListInput);
+  showList.addEventListener("focusout", onShowListFocusOut);
 }
 
 function saveShows() {
@@ -709,14 +711,63 @@ function unescapeRpp(value) {
   return value.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
 }
 
+function dateValueKind(value) {
+  const date = String(value ?? "");
+  if (!date) return "empty";
+
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "invalid";
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const daysInMonth = [31, (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month - 1]
+    ? "valid"
+    : "invalid";
+}
+
+function isoDateToDisplay(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : String(value || "");
+}
+
+function formatDateInputValue(value) {
+  const raw = String(value || "");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return dateValueKind(raw) === "valid" ? isoDateToDisplay(raw) : raw;
+  }
+
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+}
+
+function dateInputToIso(value) {
+  const raw = String(value || "");
+  if (!raw) return "";
+
+  const displayMatch = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (displayMatch) {
+    const [, day, month, year] = displayMatch;
+    const iso = `${year}-${month}-${day}`;
+    return dateValueKind(iso) === "valid" ? iso : null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw) && dateValueKind(raw) === "valid") return raw;
+  return null;
+}
+
 function parseShowNameMeta(filename) {
   const base = filename.replace(/\.(rpp|csv|txt)$/i, "");
   const match = base.match(/^(\d{4})(\d{2})(\d{2})[_\-\s]+(.+)$/);
   if (match) {
     const [, year, month, day, rest] = match;
+    const date = `${year}-${month}-${day}`;
     const venue = rest.replace(/[_-]+/g, " ").trim();
     return {
-      date: `${year}-${month}-${day}`,
+      date: dateValueKind(date) === "valid" ? date : "",
       venue,
       name: venue || base.replace(/[_-]+/g, " ").trim(),
     };
@@ -1160,6 +1211,12 @@ function metaInput(show, field, placeholder, extraClass = "") {
   return `<input type="text" data-field="${field}" placeholder="${placeholder}" value="${escapeHtml(show[field] || "")}" class="${extraClass}">`;
 }
 
+function dateMetaInput(show) {
+  const date = String(show.date || "");
+  const displayValue = dateValueKind(date) === "valid" ? isoDateToDisplay(date) : date;
+  return `<input type="text" inputmode="numeric" data-field="date" placeholder="DD-MM-YYYY" value="${escapeHtml(displayValue)}">`;
+}
+
 function sortedShows() {
   return [...shows].sort((a, b) => {
     if (!a.date && !b.date) return a.addedAt - b.addedAt;
@@ -1194,7 +1251,7 @@ function renderShows() {
       </div>
       <div class="show-body">
         <div class="meta-grid">
-          ${metaInput(show, "date", "Date (e.g. 2026-03-14)")}
+          ${dateMetaInput(show)}
           ${metaInput(show, "venue", "Venue / city")}
           ${metaInput(show, "name", "Show name")}
           ${metaInput(show, "tour", "Tour name")}
@@ -1247,8 +1304,54 @@ function onShowListChange(event) {
   }
 
   if (event.target.matches("[data-field]")) {
+    if (event.target.dataset.field === "date") {
+      commitDateInput(id, event.target);
+      return;
+    }
     updateShowField(id, event.target.dataset.field, event.target.value);
   }
+}
+
+function onShowListInput(event) {
+  if (!event.target.matches("[data-field='date']")) return;
+
+  const input = event.target;
+  const digitCountBeforeCursor = input.value.slice(0, input.selectionStart ?? input.value.length).replace(/\D/g, "").length;
+  const formattedValue = formatDateInputValue(input.value);
+  input.value = formattedValue;
+  input.setCustomValidity("");
+
+  let cursorPosition = digitCountBeforeCursor ? formattedValue.length : 0;
+  let digitsSeen = 0;
+  if (digitCountBeforeCursor) {
+    for (let index = 0; index < formattedValue.length; index += 1) {
+      if (/\d/.test(formattedValue[index])) digitsSeen += 1;
+      if (digitsSeen >= digitCountBeforeCursor) {
+        cursorPosition = index + 1;
+        break;
+      }
+    }
+  }
+  input.setSelectionRange(cursorPosition, cursorPosition);
+}
+
+function onShowListFocusOut(event) {
+  if (!event.target.matches("[data-field='date']") || !event.target.isConnected) return;
+  const card = event.target.closest(".show-card");
+  if (card) commitDateInput(card.dataset.id, event.target);
+}
+
+function commitDateInput(id, input) {
+  const isoDate = dateInputToIso(input.value);
+  if (isoDate === null) {
+    input.setCustomValidity("Enter a valid date as DD-MM-YYYY.");
+    input.reportValidity();
+    return false;
+  }
+
+  input.setCustomValidity("");
+  updateShowField(id, "date", isoDate);
+  return true;
 }
 
 function toggleShow(id) {
