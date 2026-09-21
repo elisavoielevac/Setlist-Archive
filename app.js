@@ -33,7 +33,6 @@ const trackerNameEl = document.querySelector("#trackerName");
 const trackerStatusEl = document.querySelector("#trackerStatus");
 const newTrackerBtn = document.querySelector("#newTrackerBtn");
 const manageArchivesBtn = document.querySelector("#manageArchivesBtn");
-const saveAsTrackerBtn = document.querySelector("#saveAsTrackerBtn");
 const manageArchivesDialog = document.querySelector("#manageArchivesDialog");
 const manageArchivesList = document.querySelector("#manageArchivesList");
 const cancelManageArchivesBtn = document.querySelector("#cancelManageArchivesBtn");
@@ -115,7 +114,6 @@ function bindEvents() {
   document.querySelector("#deleteSelectedBtn").addEventListener("click", deleteSelectedShows);
   newTrackerBtn.addEventListener("click", createTracker);
   manageArchivesBtn.addEventListener("click", showManageArchives);
-  saveAsTrackerBtn.addEventListener("click", saveTrackerAs);
   cancelManageArchivesBtn.addEventListener("click", closeManageArchives);
   openManagedArchiveBtn.addEventListener("click", openSelectedManagedArchive);
   importManagedArchiveBtn.addEventListener("click", importArchive);
@@ -203,7 +201,6 @@ function renderTrackerState() {
   if (!activeTracker) {
     trackerNameEl.textContent = "No archive open";
     trackerStatusEl.textContent = "Create or select an archive to begin";
-    saveAsTrackerBtn.disabled = true;
     fileInput.disabled = true;
     dropzone.classList.add("is-disabled");
     dropzone.setAttribute("aria-disabled", "true");
@@ -217,7 +214,6 @@ function renderTrackerState() {
     saved: "Saved",
     failed: "Save failed",
   }[trackerSaveStatus];
-  saveAsTrackerBtn.disabled = false;
   fileInput.disabled = false;
   dropzone.classList.remove("is-disabled");
   dropzone.setAttribute("aria-disabled", "false");
@@ -676,39 +672,6 @@ async function revealSelectedManagedArchive() {
   } catch (error) {
     console.error("Failed to reveal managed archive", error);
     toast("Could not reveal archive in Finder");
-  }
-}
-
-async function saveTrackerAs() {
-  if (!activeTracker) {
-    toast("Open or create an archive before duplicating it");
-    return;
-  }
-
-  const name = await requestManagedTrackerName({
-    title: "Duplicate Archive",
-    defaultName: `${trackerDisplayName(activeTracker.name)} copy`,
-    submitLabel: "Duplicate",
-  });
-  if (!name) return;
-  if (name.toLowerCase() === activeTracker.name.toLowerCase()) {
-    toast("Choose a new archive name to duplicate");
-    return;
-  }
-
-  try {
-    if (await managedTrackerNameExists(name)) {
-      toast("An archive with that name already exists");
-      return;
-    }
-    await waitForActiveTrackerSaves({ allowFailure: true });
-    const now = Date.now();
-    const tracker = await trackerPersistence.writeManagedTrackerFile(name, shows, activeTracker.createdAt, now);
-    await activateTracker(name, tracker);
-    toast(`Duplicated ${trackerDisplayName(name)}`);
-  } catch (error) {
-    console.error("Failed to save tracker copy", error);
-    toast("Could not duplicate archive. The current archive was not changed.");
   }
 }
 
