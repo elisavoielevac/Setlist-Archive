@@ -979,12 +979,28 @@ function fuzzyScore(target, query) {
   return best <= threshold ? best : null;
 }
 
-function addMarkersAsShow(filename, markers, items) {
+async function fingerprintSourceText(text) {
+  const sourceBytes = new TextEncoder().encode(text);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", sourceBytes);
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `sha256:${hex}`;
+}
+
+function addMarkersAsShow(filename, markers, items, sourceFingerprint, batchFingerprints) {
   if (!requireActiveTracker()) return null;
   items = items || [];
   if (!markers.length && !items.length) {
     toast(`No markers or audio found in ${filename}`);
     return null;
+  }
+
+  if (sourceFingerprint) {
+    const alreadyImported = shows.some((show) => show.sourceFingerprint === sourceFingerprint);
+    if (alreadyImported || batchFingerprints?.has(sourceFingerprint)) {
+      toast(`Skipped duplicate: ${filename}`);
+      return null;
+    }
+    batchFingerprints?.add(sourceFingerprint);
   }
 
   const meta = parseShowNameMeta(filename);
@@ -999,6 +1015,7 @@ function addMarkersAsShow(filename, markers, items) {
     markers,
     items,
     addedAt: Date.now(),
+    sourceFingerprint,
   };
 
   shows.unshift(show);
@@ -1011,6 +1028,7 @@ function addMarkersAsShow(filename, markers, items) {
 async function handleFiles(fileList) {
   if (!requireActiveTracker() || !fileList?.length) return;
 
+  const batchFingerprints = new Set();
   const importedShows = await Promise.all([...fileList].map((file) => new Promise((resolve) => {
     const reader = new FileReader();
     reader.addEventListener("error", () => {
@@ -1019,7 +1037,11 @@ async function handleFiles(fileList) {
     });
     reader.addEventListener("load", (event) => {
       const text = typeof event.target.result === "string" ? event.target.result : "";
-      resolve(importFileText(file.name, text));
+      importFileText(file.name, text, batchFingerprints).then(resolve).catch((error) => {
+        console.error(`Could not import ${file.name}`, error);
+        toast(`Could not import ${file.name}`);
+        resolve(null);
+      });
     });
     reader.readAsText(file);
   })));
@@ -1027,12 +1049,13 @@ async function handleFiles(fileList) {
   finishImportedShowBatch(importedShows);
 }
 
-function importFileText(filename, text) {
+async function importFileText(filename, text, batchFingerprints) {
+  const sourceFingerprint = await fingerprintSourceText(text);
   if (/\.csv$/i.test(filename)) {
-    return addMarkersAsShow(filename, parseCsv(text), []);
+    return addMarkersAsShow(filename, parseCsv(text), [], sourceFingerprint, batchFingerprints);
   }
   const parsed = parseRppFull(text);
-  return addMarkersAsShow(filename, parsed.markers, parsed.items);
+  return addMarkersAsShow(filename, parsed.markers, parsed.items, sourceFingerprint, batchFingerprints);
 }
 
 function finishImportedShowBatch(importedShows) {
@@ -1084,12 +1107,13 @@ async function setupTauriFileDrop() {
 
       const paths = event.payload.paths || [];
       console.info("[Tauri drop] Native drop received", paths);
+      const batchFingerprints = new Set();
       const importedShows = await Promise.all(paths.map(async (path) => {
         const filename = path.split(/[\\/]/).pop() || path;
         try {
           const text = await invoke("read_text_file", { path });
           console.info(`[Tauri drop] Read ${filename}; importing with the existing parser.`);
-          const importedShow = importFileText(filename, text);
+          const importedShow = await importFileText(filename, text, batchFingerprints);
           console.info(`[Tauri drop] Imported ${filename}.`);
           return importedShow;
         } catch (error) {
