@@ -1222,7 +1222,7 @@ function onShowListClick(event) {
   const id = card.dataset.id;
 
   if (event.target.closest("[data-action='delete']")) {
-    removeShow(id);
+    deleteSingleShow(id);
     return;
   }
 
@@ -1285,6 +1285,14 @@ function removeShow(id) {
   toast("Show deleted");
 }
 
+async function deleteSingleShow(id) {
+  const show = shows.find((item) => item.id === id);
+  if (!show) return;
+
+  if (!await confirmSelectedDeletion(`Delete "${show.name}"? This cannot be undone.`)) return;
+  removeShow(id);
+}
+
 async function deleteSelectedShows() {
   const selectedShows = shows.filter((show) => selectedIds.has(show.id));
   const count = selectedShows.length;
@@ -1303,7 +1311,6 @@ async function deleteSelectedShows() {
 }
 
 function confirmSelectedDeletion(message) {
-  if (!window.__TAURI__) return Promise.resolve(window.confirm(message));
   if (pendingDeleteConfirmation) return Promise.resolve(false);
 
   dialogReturnFocus = document.activeElement;
