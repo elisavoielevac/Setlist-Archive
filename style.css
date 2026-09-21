@@ -726,6 +726,40 @@ textarea:focus {
   width: min(30rem, 100%);
 }
 
+.manage-archives-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.manage-archives-header p {
+  margin: 0;
+}
+
+.manage-archives-close {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.manage-archives-close:hover,
+.manage-archives-close:focus-visible {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--text);
+  outline: none;
+}
+
 .manage-archives-list {
   display: grid;
   max-height: 18rem;
@@ -763,6 +797,10 @@ textarea:focus {
   outline: none;
 }
 
+.manage-archive-row.is-selected {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
 .manage-archive-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -774,7 +812,8 @@ textarea:focus {
   padding: 0.1rem 0.35rem;
   border: 1px solid var(--border);
   border-radius: 2px;
-  color: var(--dim);
+  border-color: rgba(61, 220, 151, 0.4);
+  color: var(--accent);
   font-size: 0.7rem;
 }
 
@@ -791,12 +830,39 @@ textarea:focus {
   gap: 0.875rem;
 }
 
+.manage-archives-footer {
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .manage-archives-actions {
   display: flex;
-  flex: 1;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.manage-archives-transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--border);
+}
+
+.manage-archives-footer > .danger-btn {
+  margin-left: 0.25rem;
+}
+
+.manage-archives-actions .text-btn:disabled,
+.manage-archives-transfer-actions .text-btn:disabled,
+.manage-archives-actions .primary-btn:disabled,
+.manage-archives-actions .danger-btn:disabled,
+.manage-archives-footer > .danger-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 @media (min-width: 640px) {

@@ -119,19 +119,23 @@
     </div>
     <div id="manageArchivesDialog" class="confirm-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="manageArchivesDialogTitle">
       <div class="confirm-dialog-panel manage-archives-dialog-panel">
-        <p id="manageArchivesDialogTitle">Manage Archives</p>
+        <div class="manage-archives-header">
+          <p id="manageArchivesDialogTitle">Manage Archives</p>
+          <button id="cancelManageArchivesBtn" class="manage-archives-close" type="button" aria-label="Close" title="Close">×</button>
+        </div>
         <div id="manageArchivesList" class="manage-archives-list" role="group" aria-label="Managed archives"></div>
-        <div class="confirm-dialog-actions">
-          <button id="cancelManageArchivesBtn" type="button" class="text-btn">Close</button>
+        <div class="confirm-dialog-actions manage-archives-footer">
           <div class="manage-archives-actions">
-            <button id="importManagedArchiveBtn" type="button" class="text-btn">Import Archive</button>
+            <button id="openManagedArchiveBtn" type="button" class="primary-btn" disabled>Open</button>
             <button id="renameManagedArchiveBtn" type="button" class="text-btn" disabled>Rename</button>
             <button id="duplicateManagedArchiveBtn" type="button" class="text-btn" disabled>Duplicate</button>
-            <button id="exportManagedArchiveBtn" type="button" class="text-btn" disabled>Export Archive</button>
-            <button id="revealManagedArchiveBtn" type="button" class="text-btn" disabled>Reveal</button>
-            <button id="deleteManagedArchiveBtn" type="button" class="danger-btn" disabled>Delete</button>
+            <button id="revealManagedArchiveBtn" type="button" class="text-btn" disabled>Show in Finder</button>
           </div>
-          <button id="openManagedArchiveBtn" type="button" class="primary-btn" disabled>Open</button>
+          <div class="manage-archives-transfer-actions">
+            <button id="importManagedArchiveBtn" type="button" class="text-btn">Import</button>
+            <button id="exportManagedArchiveBtn" type="button" class="text-btn" disabled>Export</button>
+          </div>
+          <button id="deleteManagedArchiveBtn" type="button" class="danger-btn" disabled>Delete</button>
         </div>
       </div>
     </div>
