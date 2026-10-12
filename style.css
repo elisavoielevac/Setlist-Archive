@@ -250,9 +250,26 @@ h1 {
   text-transform: uppercase;
 }
 
+.show-toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.show-toolbar > .primary-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.show-toolbar > .primary-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .search-wrap {
   position: relative;
-  margin-bottom: 0.75rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .search-icon {
@@ -369,6 +386,11 @@ textarea:focus {
 }
 
 .dropzone {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  font: inherit;
+  background: none;
   padding: 1.75rem 1.25rem;
   border: 1px dashed var(--border);
   border-radius: 2px;
@@ -376,6 +398,33 @@ textarea:focus {
   font-size: 0.875rem;
   text-align: center;
   cursor: pointer;
+}
+
+.dropzone:focus-visible {
+  outline: 2px solid var(--accent-border-focus);
+  outline-offset: 2px;
+}
+
+.page.has-shows {
+  padding-top: 1.5rem;
+}
+
+.has-shows .site-header,
+.has-shows .tracker-bar {
+  margin-bottom: 1rem;
+}
+
+.has-shows h1 {
+  font-size: 1.5rem;
+}
+
+.has-shows .dropzone {
+  padding: 0.625rem 1rem;
+  font-size: 0.75rem;
+}
+
+.has-shows .tabs {
+  margin-top: 1.25rem;
 }
 
 .dropzone strong {
@@ -1068,5 +1117,24 @@ textarea:focus {
 
   .stats-columns {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 639px) {
+  .show-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .search-wrap {
+    flex-basis: 100%;
+  }
+
+  .tracker-bar {
+    flex-wrap: wrap;
+  }
+
+  .tracker-actions {
+    flex-wrap: wrap;
+    flex-shrink: 1;
   }
 }

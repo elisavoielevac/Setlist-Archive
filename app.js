@@ -1,5 +1,8 @@
 const trackerPersistence = window.trackerPersistence;
 
+const addShowsBtn = document.querySelector("#addShowsBtn");
+const archiveIntro = document.querySelector("#archiveIntro");
+const archiveSummary = document.querySelector("#archiveSummary");
 const fileInput = document.querySelector("#fileInput");
 const dropzone = document.querySelector("#dropzone");
 const dropzoneText = document.querySelector("#dzText");
@@ -86,6 +89,10 @@ function bindEvents() {
     }
     handleFiles(event.target.files);
     fileInput.value = "";
+  });
+
+  addShowsBtn.addEventListener("click", () => {
+    if (requireActiveTracker()) fileInput.click();
   });
 
   dropzone.addEventListener("click", () => {
@@ -260,6 +267,12 @@ function clearTrackerSelectionState() {
 }
 
 function renderTrackerState() {
+  const hasShows = Boolean(activeTracker && shows.length);
+  document.querySelector(".page").classList.toggle("has-shows", hasShows);
+  archiveIntro.classList.toggle("hidden", hasShows);
+  archiveSummary.classList.toggle("hidden", !hasShows);
+  addShowsBtn.disabled = !activeTracker;
+  dropzone.disabled = !activeTracker;
   if (!activeTracker) {
     trackerNameEl.textContent = "No archive open";
     trackerStatusEl.textContent = "Create or select an archive to begin";
@@ -281,7 +294,9 @@ function renderTrackerState() {
   ignoredSongsBtn.disabled = false;
   dropzone.classList.remove("is-disabled");
   dropzone.setAttribute("aria-disabled", "false");
-  dropzoneText.innerHTML = "<strong>Drop .rpp or .csv files here</strong><br />or click to choose files";
+  dropzoneText.innerHTML = hasShows
+    ? "Drop .rpp or .csv files here, or click to choose files"
+    : "<strong>Drop .rpp or .csv files here</strong><br />or click to choose files";
 }
 
 async function activateTracker(name, tracker) {

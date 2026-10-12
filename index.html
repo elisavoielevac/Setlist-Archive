@@ -22,11 +22,12 @@
           <span class="theme-toggle-knob" aria-hidden="true"></span>
         </button>
         <h1>Reaper Setlist Archive</h1>
-        <p class="lede">
+        <p id="archiveIntro" class="lede">
           Drop in your Reaper project files (.rpp) or an exported marker CSV. Every marker becomes a
           song entry you can search across every show you've ever recorded — along with tour, lineup
           and notes. Create or select an archive to start building your collection.
         </p>
+        <p id="archiveSummary" class="lede hidden">Search your shows and setlists, or add a recording.</p>
       </header>
 
       <div class="tracker-bar">
@@ -42,28 +43,30 @@
         </div>
       </div>
 
-      <div class="search-wrap">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" />
-          <path d="M21 21l-4.3-4.3" />
-        </svg>
-        <label class="visually-hidden" for="search">Search shows, venues, dates, tours, lineup, notes, songs</label>
-        <input
-          id="search"
-          type="search"
-          placeholder="Search shows, venues, dates, tours, lineup, notes, songs…"
-          autocomplete="off"
-        />
+      <div class="show-toolbar">
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.3-4.3" />
+          </svg>
+          <label class="visually-hidden" for="search">Search shows, venues, dates, tours, lineup, notes, songs</label>
+          <input
+            id="search"
+            type="search"
+            placeholder="Search shows, venues, dates, tours, lineup, notes, songs…"
+            autocomplete="off"
+          />
+        </div>
+        <button id="addShowsBtn" type="button" class="primary-btn" disabled>Add shows</button>
       </div>
       <div id="searchResults" class="search-results"></div>
 
-      <div class="section-label">Add a show</div>
-      <div id="dropzone" class="dropzone">
-        <div id="dzText">
+      <button id="dropzone" type="button" class="dropzone" disabled>
+        <span id="dzText">
           <strong>Create or select an archive first</strong><br />
           then import .rpp or .csv files
-        </div>
-      </div>
+        </span>
+      </button>
       <input id="fileInput" type="file" multiple accept=".rpp,.csv" hidden />
 
       <div class="tabs" role="tablist">
