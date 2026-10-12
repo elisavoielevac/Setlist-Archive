@@ -1130,21 +1130,26 @@ function detectRecordingPasses(items) {
       boundary > recordingStart + SET_BOUNDARY_SYNC_TOLERANCE_SECONDS
       && boundary < recordingEnd - SET_BOUNDARY_SYNC_TOLERANCE_SECONDS
     ))
-    .filter((boundary) => {
-      return recordingTimestampSupport(intervals, boundary, "end") >= requiredSupport
-        && recordingTimestampSupport(intervals, boundary, "start") >= requiredSupport;
-    })
     .sort((left, right) => left - right);
 
-  const segmentBoundaries = [recordingStart, ...boundaries, recordingEnd];
-  return segmentBoundaries.slice(0, -1).map((start, index) => {
-    const end = segmentBoundaries[index + 1];
-    return {
-      start,
-      end,
-      duration: end - start,
-    };
-  });
+  const passes = [];
+  let passStart = recordingStart;
+  let pendingEnd = null;
+  for (const boundary of boundaries) {
+    if (recordingTimestampSupport(intervals, boundary, "end") >= requiredSupport) {
+      pendingEnd = boundary;
+    }
+    // A shared recording stop and restart may be separated by a break.
+    // Keep both times so the break is not counted as recorded set time.
+    if (pendingEnd !== null
+      && recordingTimestampSupport(intervals, boundary, "start") >= requiredSupport) {
+      passes.push({ start: passStart, end: pendingEnd, duration: pendingEnd - passStart });
+      passStart = boundary;
+      pendingEnd = null;
+    }
+  }
+  passes.push({ start: passStart, end: recordingEnd, duration: recordingEnd - passStart });
+  return passes;
 }
 
 function levenshtein(a, b) {
