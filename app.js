@@ -1149,7 +1149,8 @@ function detectRecordingPasses(items) {
     }
   }
   passes.push({ start: passStart, end: recordingEnd, duration: recordingEnd - passStart });
-  return passes;
+  // Ignore failed recording blocks shorter than five minutes.
+  return passes.filter((pass) => pass.duration >= 5 * 60);
 }
 
 function levenshtein(a, b) {

@@ -81,3 +81,26 @@ test("empty and unusable recordings have no sets", () => {
   expectPasses([], []);
   expectPasses([{ position: 0, length: 0, track: 1 }, { position: NaN, length: 10, track: 2 }], []);
 });
+
+test("the five-minute minimum includes exactly five minutes", () => {
+  expectPasses(recording(0, 299.999), []);
+  expectPasses(recording(0, 300), [[0, 300]]);
+  expectPasses(recording(0, 300.001), [[0, 300.001]]);
+});
+
+test("short recordings before, between, and after sets are excluded from totals", () => {
+  const passes = expectPasses([
+    mtc, ...recording(0, 30), ...recording(90, 1090),
+    ...recording(1200, 1230), ...recording(2000, 3000),
+    ...recording(3100, 3130),
+  ], [[90, 1090], [2000, 3000]]);
+  assert.equal(passes.reduce((sum, pass) => sum + pass.duration, 0), 2000);
+});
+
+test("short recordings with no gaps are excluded without merging sets", () => {
+  expectPasses([
+    mtc, ...recording(0, 30), ...recording(30, 1030),
+    ...recording(1030, 1060), ...recording(1060, 2060),
+    ...recording(2060, 2090),
+  ], [[30, 1030], [1060, 2060]]);
+});
