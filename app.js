@@ -34,6 +34,7 @@ const cancelTrackerNameBtn = document.querySelector("#cancelTrackerNameBtn");
 const confirmTrackerNameBtn = document.querySelector("#confirmTrackerNameBtn");
 const trackerNameEl = document.querySelector("#trackerName");
 const trackerStatusEl = document.querySelector("#trackerStatus");
+const archiveMenu = document.querySelector("#archiveMenu");
 const newTrackerBtn = document.querySelector("#newTrackerBtn");
 const manageArchivesBtn = document.querySelector("#manageArchivesBtn");
 const ignoredSongsBtn = document.querySelector("#ignoredSongsBtn");
@@ -137,6 +138,14 @@ function bindEvents() {
   document.querySelector("#clearSelectionBtn").addEventListener("click", clearSelection);
   document.querySelector("#applyBulkBtn").addEventListener("click", applyBulkEdit);
   document.querySelector("#deleteSelectedBtn").addEventListener("click", deleteSelectedShows);
+  archiveMenu.addEventListener("click", (event) => {
+    if (!event.target.closest("button")) return;
+    archiveMenu.open = false;
+    archiveMenu.querySelector("summary").focus();
+  }, true);
+  document.addEventListener("click", (event) => {
+    if (!archiveMenu.contains(event.target)) archiveMenu.open = false;
+  });
   newTrackerBtn.addEventListener("click", createTracker);
   manageArchivesBtn.addEventListener("click", showManageArchives);
   ignoredSongsBtn.addEventListener("click", showIgnoredSongs);
@@ -159,6 +168,12 @@ function bindEvents() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      if (archiveMenu.open) {
+        archiveMenu.open = false;
+        archiveMenu.querySelector("summary").focus();
+        event.preventDefault();
+        return;
+      }
       if (pendingDeleteConfirmation) {
         resolveDeleteConfirmation(false);
         return;
@@ -679,7 +694,7 @@ function ignoreSongName(name) {
   activeTracker.ignoredSongNames.push(displayName);
   saveShows();
   renderAll();
-  toast(`Ignored "${displayName}"`);
+  toast(`Ignored "${displayName}" across this archive`);
 }
 
 async function openSelectedManagedArchive() {
@@ -1501,6 +1516,7 @@ function renderShows() {
           </label>
         </details>
         ${renderRecordingLength(show)}
+        <p class="setlist-help">Ignore excludes matching song names across this archive. Recording lengths are unchanged.</p>
         <div class="setlist-heading">
           <span aria-hidden="true">#</span>
           <span>Song</span>
@@ -1522,7 +1538,7 @@ function renderShows() {
                 ${ignored
                   ? `<span class="ignored-marker-label">Ignored</span>`
                   : canIgnore
-                    ? `<button type="button" class="text-btn marker-ignore-btn" data-action="ignore" data-song-name="${escapeHtml(marker.name)}">Ignore</button>`
+                    ? `<button type="button" class="text-btn marker-ignore-btn" title="Ignore this song name across this archive" aria-label="Ignore ${escapeHtml(marker.name)} across this archive" data-action="ignore" data-song-name="${escapeHtml(marker.name)}">Ignore</button>`
                     : ""}
               </span>
             </div>

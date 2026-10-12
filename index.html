@@ -36,11 +36,14 @@
           <strong id="trackerName">No archive open</strong>
           <span id="trackerStatus" class="tracker-status">Create or select an archive to begin</span>
         </div>
-        <div class="tracker-actions">
-          <button id="newTrackerBtn" type="button" class="primary-btn">New Archive</button>
-          <button id="manageArchivesBtn" type="button" class="text-btn">Manage Archives</button>
-          <button id="ignoredSongsBtn" type="button" class="text-btn" disabled>Ignored Songs</button>
-        </div>
+        <details id="archiveMenu" class="archive-menu">
+          <summary>Archive actions</summary>
+          <div class="tracker-actions">
+            <button id="newTrackerBtn" type="button" class="text-btn">New archive</button>
+            <button id="manageArchivesBtn" type="button" class="text-btn">Manage archives</button>
+            <button id="ignoredSongsBtn" type="button" class="text-btn" disabled>Ignored songs</button>
+          </div>
+        </details>
       </div>
 
       <div class="show-toolbar">
@@ -75,9 +78,10 @@
       </div>
 
       <div id="showsPanel">
-        <p class="hint">
-          Click a show to expand it. Shift-click or ⌘/Ctrl-click a show to select multiple for bulk editing.
-        </p>
+        <details class="selection-help">
+          <summary>Selection help</summary>
+          <p class="hint">Click a show to expand it. Use checkboxes to select shows for bulk editing. Shift-click selects a range; ⌘/Ctrl-click adds or removes individual shows.</p>
+        </details>
 
         <div id="bulkBar" class="bulk-bar hidden">
           <div class="bulk-bar-top">
@@ -160,6 +164,7 @@
           <p id="ignoredSongsDialogTitle">Ignored Songs</p>
           <button id="cancelIgnoredSongsBtn" class="manage-archives-close" type="button" aria-label="Close" title="Close">×</button>
         </div>
+        <p class="hint">Ignored names are excluded from song counts, song search results, and song statistics across this archive. Recording lengths are unchanged. Unignore a name to include it again.</p>
         <div id="ignoredSongsList" class="ignored-songs-list" role="group" aria-label="Ignored songs"></div>
       </div>
     </div>
