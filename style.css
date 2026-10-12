@@ -7,7 +7,7 @@
   --accent: #3ddc97;
   --accent-soft: rgba(61, 220, 151, 0.08);
   --text: #e5e5e2;
-  --dim: #83807a;
+  --dim: #aaa79f;
   --danger: #f87171;
   --danger-border: #7f1d1d;
   --danger-bg: rgba(127, 29, 29, 0.45);
@@ -37,7 +37,7 @@ html[data-theme="light"] {
   --accent: #087f55;
   --accent-soft: rgba(8, 127, 85, 0.08);
   --text: #1c2520;
-  --dim: #5f6b64;
+  --dim: #536057;
   --danger: #b42318;
   --danger-border: #b42318;
   --danger-bg: rgba(180, 35, 24, 0.1);
@@ -294,6 +294,12 @@ textarea {
   background: var(--panel);
   color: var(--text);
   font: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--dim);
+  opacity: 1;
 }
 
 #search {
@@ -645,6 +651,22 @@ textarea:focus {
   flex-shrink: 0;
   color: var(--dim);
   font-size: 0.6875rem;
+}
+
+.show-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.show-summary > span {
+  white-space: nowrap;
+}
+
+.show-summary > span + span::before {
+  content: "·";
+  margin-right: 0.375rem;
 }
 
 .chevron {
@@ -1121,6 +1143,20 @@ textarea:focus {
 }
 
 @media (max-width: 639px) {
+  .show-card-header {
+    flex-wrap: wrap;
+  }
+
+  .show-card-main,
+  .show-card-aside {
+    width: 100%;
+  }
+
+  .show-card-aside {
+    justify-content: space-between;
+    padding-left: 1.5rem;
+  }
+
   .show-toolbar {
     flex-wrap: wrap;
   }

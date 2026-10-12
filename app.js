@@ -1382,6 +1382,16 @@ async function setupTauriFileDrop() {
   }
 }
 
+function renderShowSummary(show) {
+  const songCount = getCountedSongMarkers(show).length;
+  const passes = detectRecordingPasses(show.items);
+  const total = passes.reduce((sum, pass) => sum + pass.duration, 0);
+  return `<span class="show-summary">
+    <span>${songCount} song${songCount === 1 ? "" : "s"}</span>
+    ${passes.length ? `<span>${passes.length} set${passes.length === 1 ? "" : "s"}</span><span>${fmtTime(total)}</span>` : ""}
+  </span>`;
+}
+
 function renderRecordingLength(show) {
   if (!show.items || !show.items.length) return "";
   const passes = detectRecordingPasses(show.items);
@@ -1456,7 +1466,7 @@ function renderShows() {
           </div>
         </div>
         <div class="show-card-aside">
-          <span>${getCountedSongMarkers(show).length} song${getCountedSongMarkers(show).length === 1 ? "" : "s"}</span>
+          ${renderShowSummary(show)}
           <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
         </div>
       </div>
