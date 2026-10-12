@@ -30,14 +30,14 @@
 
 html[data-theme="light"] {
   color-scheme: light;
-  --bg: #f4f5f2;
-  --panel: #ffffff;
-  --panel-2: #eef1ed;
-  --border: #c8cec8;
-  --accent: #087f55;
+  --bg: #e8e9e3;
+  --panel: #f1f2ec;
+  --panel-2: #e2e5dd;
+  --border: #aeb7ac;
+  --accent: #086744;
   --accent-soft: rgba(8, 127, 85, 0.08);
-  --text: #1c2520;
-  --dim: #536057;
+  --text: #252e28;
+  --dim: #465149;
   --danger: #b42318;
   --danger-border: #b42318;
   --danger-bg: rgba(180, 35, 24, 0.1);
@@ -45,13 +45,13 @@ html[data-theme="light"] {
   --accent-border-focus: rgba(8, 127, 85, 0.6);
   --accent-border-subtle: rgba(8, 127, 85, 0.4);
   --accent-border-hover: rgba(8, 127, 85, 0.5);
-  --accent-text-muted: rgba(8, 127, 85, 0.85);
+  --accent-text-muted: #176343;
   --highlight-expanded-border: rgba(8, 127, 85, 0.5);
   --highlight-import-border: rgba(8, 127, 85, 0.75);
   --highlight-import-ring: rgba(8, 127, 85, 0.14);
   --highlight-search-border: rgba(49, 95, 159, 0.75);
   --highlight-search-ring: rgba(49, 95, 159, 0.16);
-  --highlight-separator: rgba(0, 0, 0, 0.08);
+  --highlight-separator: rgba(37, 46, 40, 0.14);
   --danger-hover-bg: rgba(180, 35, 24, 0.16);
   --modal-backdrop: rgba(12, 18, 14, 0.45);
   --error-text: #b42318;
@@ -1338,4 +1338,19 @@ textarea:focus {
     right: auto;
     left: 0;
   }
+}
+
+html[data-theme="light"] .show-meta,
+html[data-theme="light"] .show-card-aside,
+html[data-theme="light"] .show-details-summary,
+html[data-theme="light"] .meta-field-label,
+html[data-theme="light"] .setlist-heading,
+html[data-theme="light"] .marker-number,
+html[data-theme="light"] .row-time,
+html[data-theme="light"] .ignored-marker-label {
+  font-size: 0.8125rem;
+}
+
+html[data-theme="light"] .marker-row {
+  font-size: 0.9375rem;
 }
