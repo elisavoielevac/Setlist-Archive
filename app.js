@@ -1447,6 +1447,20 @@ function sortedShows() {
   });
 }
 
+function renderShowDetailsSummary(show) {
+  const fields = [
+    ["Date", showDateLabel(show.date)],
+    ["Venue / city", show.venue],
+    ["Tour", show.tour],
+    ["Band lineup", show.lineup],
+    ["Notes", show.notes],
+  ];
+  return `<dl class="show-details-summary">${fields
+    .filter(([, value]) => String(value || "").trim())
+    .map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`)
+    .join("")}</dl>`;
+}
+
 function renderShows() {
   if (!shows.length) {
     showList.innerHTML = activeTracker
@@ -1471,35 +1485,50 @@ function renderShows() {
         </div>
       </div>
       <div class="show-body">
-        <div class="meta-grid">
-          ${dateMetaInput(show)}
-          ${metaInput(show, "venue", "Venue / city")}
-          ${metaInput(show, "name", "Show name")}
-          ${metaInput(show, "tour", "Tour")}
-        </div>
-        ${metaInput(show, "lineup", "Band lineup", "Artist 1, Artist 2", "full")}
-        <label class="meta-field full">
-          <span class="meta-field-label">Notes</span>
-          <textarea data-field="notes" placeholder="Optional notes" rows="2">${escapeHtml(show.notes || "")}</textarea>
-        </label>
-        ${renderRecordingLength(show)}
-        ${show.markers.map((marker) => {
-          const ignored = isSongIgnored(marker.name);
-          const canIgnore = Boolean(normalizeSongName(marker.name));
-          return `
-          <div class="row marker-row${ignored ? " is-ignored" : ""}">
-            <span class="marker-name">${escapeHtml(marker.name)}</span>
-            <span class="marker-actions">
-              <span class="row-time">${fmtTime(marker.time)}</span>
-              ${ignored
-                ? `<span class="ignored-marker-label">Ignored</span>`
-                : canIgnore
-                  ? `<button type="button" class="text-btn marker-ignore-btn" data-action="ignore" data-song-name="${escapeHtml(marker.name)}">Ignore</button>`
-                  : ""}
-            </span>
+        ${renderShowDetailsSummary(show)}
+        <details class="show-details-editor">
+          <summary>Edit details</summary>
+          <div class="meta-grid">
+            ${dateMetaInput(show)}
+            ${metaInput(show, "venue", "Venue / city")}
+            ${metaInput(show, "name", "Show name")}
+            ${metaInput(show, "tour", "Tour")}
           </div>
-        `;
-        }).join("")}
+          ${metaInput(show, "lineup", "Band lineup", "Artist 1, Artist 2", "full")}
+          <label class="meta-field full">
+            <span class="meta-field-label">Notes</span>
+            <textarea data-field="notes" placeholder="Optional notes" rows="2">${escapeHtml(show.notes || "")}</textarea>
+          </label>
+        </details>
+        ${renderRecordingLength(show)}
+        <div class="setlist-heading">
+          <span aria-hidden="true">#</span>
+          <span>Song</span>
+          <span class="position-heading">Position</span>
+          <span class="visually-hidden">Action</span>
+        </div>
+        ${(() => {
+          let songNumber = 0;
+          return show.markers.map((marker) => {
+            const ignored = isSongIgnored(marker.name);
+            const canIgnore = Boolean(normalizeSongName(marker.name));
+            if (!ignored) songNumber += 1;
+            return `
+            <div class="row marker-row${ignored ? " is-ignored" : ""}">
+              <span class="marker-number"${ignored ? ' aria-label="Ignored entry"' : ""}>${ignored ? "—" : songNumber}</span>
+              <span class="marker-name">${escapeHtml(marker.name)}</span>
+              <span class="marker-actions">
+                <span class="row-time">${fmtTime(marker.time)}</span>
+                ${ignored
+                  ? `<span class="ignored-marker-label">Ignored</span>`
+                  : canIgnore
+                    ? `<button type="button" class="text-btn marker-ignore-btn" data-action="ignore" data-song-name="${escapeHtml(marker.name)}">Ignore</button>`
+                    : ""}
+              </span>
+            </div>
+          `;
+          }).join("");
+        })()}
         <div class="card-actions">
           <button type="button" class="danger-btn" data-action="delete">Delete show</button>
         </div>
@@ -1625,11 +1654,12 @@ function focusShow(id) {
   }, 1600);
 }
 
-function restoreEditedShow(id, wasExpanded) {
+function restoreEditedShow(id, wasExpanded, wasEditing) {
   requestAnimationFrame(() => {
     const card = document.querySelector(`.show-card[data-id="${CSS.escape(id)}"]`);
     if (!card || !wasExpanded) return;
 
+    card.querySelector(".show-details-editor").open = wasEditing;
     card.classList.add("open");
     card.scrollIntoView({
       behavior: "smooth",
@@ -1641,11 +1671,13 @@ function restoreEditedShow(id, wasExpanded) {
 function updateShowField(id, field, value) {
   const show = shows.find((item) => item.id === id);
   if (!show) return;
-  const wasExpanded = document.querySelector(`.show-card[data-id="${CSS.escape(id)}"]`)?.classList.contains("open");
+  const card = document.querySelector(`.show-card[data-id="${CSS.escape(id)}"]`);
+  const wasExpanded = card?.classList.contains("open");
+  const wasEditing = Boolean(card?.querySelector(".show-details-editor")?.open);
   show[field] = value;
   saveShows();
   renderAll();
-  restoreEditedShow(id, wasExpanded);
+  restoreEditedShow(id, wasExpanded, wasEditing);
 }
 
 function removeShow(id) {
