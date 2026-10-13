@@ -1,10 +1,15 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Reaper Setlist Archive",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.3",
   "identifier": "com.elisavoielevac.reapersetlisttracker",
   "build": {
-    "frontendDist": ["../index.html", "../app.js", "../style.css", "../tracker-persistence.js"]
+    "frontendDist": [
+      "../index.html",
+      "../app.js",
+      "../style.css",
+      "../tracker-persistence.js"
+    ]
   },
   "app": {
     "withGlobalTauri": true,
@@ -21,7 +26,16 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
-    "icon": ["icons/icon.icns"]
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "icon": [
+      "icons/icon.icns"
+    ],
+    "resources": {
+      "../LICENSE": "LICENSE",
+      "../USER_MANUAL.md": "USER_MANUAL.md"
+    }
   }
 }

@@ -8,7 +8,7 @@ The app works best when each imported project represents one show, song names ar
 
 The app reads project information; it does not play audio, recognize songs from sound, or change your REAPER project files. Referenced audio files are not needed for importing marker names and recording item timings. Archives contain extracted show information, not the recordings themselves.
 
-The current build is for Apple Silicon Macs. Intel support and the minimum supported macOS version will be confirmed during release testing.
+Apple Silicon is the primary supported architecture. A universal build also contains an Intel executable, but Intel compatibility and the minimum supported macOS version still need release testing.
 
 ## Core concepts
 

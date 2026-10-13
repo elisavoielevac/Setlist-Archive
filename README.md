@@ -14,9 +14,9 @@ See [the user manual](USER_MANUAL.md) for the workflow, examples, and limitation
 
 ## Beta status
 
-Current configured version: **0.1.0-beta.1**. The next downloadable beta is being prepared.
+Current configured version: **0.1.0-beta.3**. The next downloadable beta is being prepared.
 
-The current build is for **Apple Silicon Macs**. Intel support is optional and has not been built or tested yet. A signed, notarized DMG and confirmed macOS requirements are planned for the release; this repository does not yet document a verified public installer.
+Apple Silicon is the primary supported architecture. A universal build containing both Apple Silicon and Intel executables has been produced; Intel compatibility still requires a real-device test. A signed, notarized DMG and confirmed macOS requirements are planned for the release; this repository does not yet document a verified public installer.
 
 ## What it does
 
