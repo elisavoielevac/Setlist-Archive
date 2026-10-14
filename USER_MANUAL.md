@@ -10,6 +10,17 @@ The app reads project information; it does not play audio, recognize songs from 
 
 Apple Silicon is the primary supported architecture. A universal build also contains an Intel executable, but Intel compatibility and the minimum supported macOS version still need release testing.
 
+## Installation
+
+1. Download the beta installer (`.dmg`) from the GitHub release's Assets section.
+2. Open the disk image and drag **Reaper Setlist Archive** onto **Applications**.
+3. If replacing an older version, quit that version first and choose **Replace** when Finder asks.
+4. Eject the disk image and launch the app from **Applications**.
+
+The beta.3 installer is signed with Developer ID, notarized by Apple, and has the notarization ticket attached. Installation has been tested locally on Apple Silicon with macOS 15.7.4. A download-and-install test on another Mac remains pending.
+
+Archives are stored separately from the application bundle. Local replacement testing preserved the existing archive library. Export backups before updating, and download future updates from the release page; there is no automatic updater.
+
 ## Core concepts
 
 - **Archive** — one artist, band, or tour database.
@@ -181,4 +192,4 @@ To bring one back into the app, use **Archive actions → Manage archives → Im
 
 Reaper Setlist Archive is free and open source under the [MIT License](LICENSE). Maintenance and support are best-effort.
 
-This manual describes the current macOS beta. Supported show imports are `.rpp` and marker `.csv` files. Archives are stored locally; there is no cloud synchronization. Installer instructions and confirmed system requirements will accompany the downloadable release.
+This manual describes **Reaper Setlist Archive 0.1.0-beta.3**. Supported show imports are `.rpp` and marker `.csv` files. Archives are stored locally; there is no cloud synchronization. Intel hardware and macOS versions other than 15.7.4 still require compatibility testing.

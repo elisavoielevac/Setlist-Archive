@@ -14,9 +14,9 @@ See [the user manual](USER_MANUAL.md) for the workflow, examples, and limitation
 
 ## Beta status
 
-Current configured version: **0.1.0-beta.3**. The next downloadable beta is being prepared.
+Current configured version: **0.1.0-beta.3**. The release draft is being prepared.
 
-Apple Silicon is the primary supported architecture. A universal build containing both Apple Silicon and Intel executables has been produced; Intel compatibility still requires a real-device test. A signed, notarized DMG and confirmed macOS requirements are planned for the release; this repository does not yet document a verified public installer.
+Apple Silicon is the primary supported architecture. A universal build containing both Apple Silicon and Intel executables has been produced; Intel compatibility still requires a real-device test. The signed, notarized, stapled beta.3 DMG passed local installation testing on Apple Silicon with macOS 15.7.4. Installation after downloading on another Mac and compatibility with other macOS versions remain unverified.
 
 ## What it does
 
@@ -108,6 +108,6 @@ The current beta does not support `.txt` show imports. Unsupported dropped files
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). You may use, modify, and redistribute it, including commercially, provided you retain the copyright and license notices. Third-party dependencies retain their own licenses.
+This project is licensed under the [MIT License](LICENSE). You may use, modify, and redistribute it, including commercially, provided you retain the copyright and license notices. Third-party dependencies retain their own licenses; their texts and copyright notices are collected in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
 
 Maintenance and support are best-effort. Feature requests and contributions are welcome, but acceptance and delivery dates are not guaranteed. Modified versions and forks are maintained by their respective authors.

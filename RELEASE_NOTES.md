@@ -1,11 +1,10 @@
 # Reaper Setlist Archive 0.1.0-beta.3
 
-Release candidate in preparation. Signing, notarization, and installation testing of the final downloadable package must be completed before publication.
+Release draft in preparation. The signed beta.3 DMG was accepted by Apple notarization, its ticket was attached and validated, and local installation testing passed. External download-and-install testing remains pending.
 
 ## Changes since beta.1
 
 - Use the supplied Reaper Setlist Archive app icon in the app bundle and installer
-
 - Detect recording sets separated by gaps as well as back-to-back recordings; exclude breaks from recording totals
 - Exclude detected recording blocks shorter than five minutes from set counts and recording-length statistics; exactly five minutes counts
 - Compact the header and import area for populated archives, with Add shows beside search
