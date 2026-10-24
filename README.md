@@ -14,9 +14,9 @@ See [the user manual](USER_MANUAL.md) for the workflow, examples, and limitation
 
 ## Beta status
 
-Current configured version: **0.1.0-beta.3**. The release draft is being prepared.
+Current configured version: **0.1.0-beta.4**. This update refreshes the light theme with neutral surfaces, emerald accents, and clearer fields and focus states.
 
-Apple Silicon is the primary supported architecture. A universal build containing both Apple Silicon and Intel executables has been produced; Intel compatibility still requires a real-device test. The signed, notarized, stapled beta.3 DMG passed local installation testing on Apple Silicon with macOS 15.7.4. Installation after downloading on another Mac and compatibility with other macOS versions remain unverified.
+The universal macOS build contains Apple Silicon and Intel executables. The beta.3 installer passed local installation testing on Apple Silicon with macOS 15.7.4; the user also confirmed downloading and opening beta.3 on a 2019 Intel Mac. REAPER project (`.rpp`) import on that Intel Mac remains untested, and its macOS version was not recorded. These beta.3 results do not establish beta.4 installation compatibility. Minimum macOS compatibility remains unverified.
 
 ## What it does
 

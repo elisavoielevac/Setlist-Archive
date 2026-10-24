@@ -1,4 +1,4 @@
-Reaper Setlist Archive 0.1.0-beta.3 — Third-Party Notices
+Reaper Setlist Archive 0.1.0-beta.4 — Third-Party Notices
 
 This document collects dependency license texts and copyright notices for the Mac build. The application itself is MIT licensed; that does not replace the licenses of its dependencies. Build-time dependencies are included conservatively.
 

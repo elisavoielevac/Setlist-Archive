@@ -1,6 +1,25 @@
+# Reaper Setlist Archive 0.1.0-beta.4
+
+## Changes since beta.3
+
+- Refresh the light theme with neutral backgrounds, white panels, and emerald accents
+- Improve field boundaries, keyboard focus, search, and import-area readability
+- Add subtle card shadows in the light theme
+- Preserve the existing dark theme and app behavior
+
+## Compatibility and testing
+
+The beta.4 installer is Developer ID signed, accepted by Apple notarization, and stapled. Gatekeeper verification passed. The native beta.4 app launched on Apple Silicon with macOS 15.7.4, restored the existing archive view, and displayed the refreshed light theme. All 23 automated regression tests passed. A clean installation and REAPER project import with beta.4 have not been retested.
+
+The universal macOS installer contains Apple Silicon and Intel executables. Beta.3 was previously installed and tested locally on Apple Silicon with macOS 15.7.4, and downloading and opening beta.3 was confirmed on a 2019 Intel Mac. REAPER project (`.rpp`) import on that Intel Mac remains untested; its macOS version was not recorded. These beta.3 results do not establish beta.4 installation compatibility. Minimum macOS compatibility remains unverified.
+
+Archives are stored separately from the app. Export your archives for backup before updating, quit the old app, then replace it in Applications. Referenced audio files are not required to import a REAPER project.
+
+---
+
 # Reaper Setlist Archive 0.1.0-beta.3
 
-Release draft in preparation. The signed beta.3 DMG was accepted by Apple notarization, its ticket was attached and validated, and local installation testing passed. External download-and-install testing remains pending.
+Published as a GitHub pre-release. The signed beta.3 DMG was accepted by Apple notarization, its ticket was attached and validated, and local installation testing passed. Downloading and opening beta.3 was subsequently confirmed on a 2019 Intel Mac; `.rpp` import on that Mac remains untested.
 
 ## Changes since beta.1
 
