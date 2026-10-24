@@ -4,6 +4,8 @@
   --panel: #131313;
   --panel-2: #1a1a1a;
   --border: #2c2c2c;
+  --field-border: var(--border);
+  --surface-shadow: none;
   --accent: #3ddc97;
   --accent-soft: rgba(61, 220, 151, 0.08);
   --text: #e5e5e2;
@@ -30,30 +32,32 @@
 
 html[data-theme="light"] {
   color-scheme: light;
-  --bg: #e8e9e3;
-  --panel: #f1f2ec;
-  --panel-2: #e2e5dd;
-  --border: #aeb7ac;
-  --accent: #086744;
-  --accent-soft: rgba(8, 127, 85, 0.08);
-  --text: #252e28;
-  --dim: #465149;
+  --bg: #f8f9fa;
+  --panel: #ffffff;
+  --panel-2: #f1f3f5;
+  --border: #e2e6ea;
+  --field-border: #7c8996;
+  --surface-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  --accent: #047857;
+  --accent-soft: rgba(4, 120, 87, 0.07);
+  --text: #1f2933;
+  --dim: #52606d;
   --danger: #b42318;
   --danger-border: #b42318;
   --danger-bg: rgba(180, 35, 24, 0.1);
   --text-on-accent: #ffffff;
-  --accent-border-focus: rgba(8, 127, 85, 0.6);
-  --accent-border-subtle: rgba(8, 127, 85, 0.4);
-  --accent-border-hover: rgba(8, 127, 85, 0.5);
-  --accent-text-muted: #176343;
-  --highlight-expanded-border: rgba(8, 127, 85, 0.5);
-  --highlight-import-border: rgba(8, 127, 85, 0.75);
-  --highlight-import-ring: rgba(8, 127, 85, 0.14);
-  --highlight-search-border: rgba(49, 95, 159, 0.75);
-  --highlight-search-ring: rgba(49, 95, 159, 0.16);
-  --highlight-separator: rgba(37, 46, 40, 0.14);
+  --accent-border-focus: #047857;
+  --accent-border-subtle: rgba(4, 120, 87, 0.35);
+  --accent-border-hover: rgba(4, 120, 87, 0.5);
+  --accent-text-muted: #047857;
+  --highlight-expanded-border: rgba(4, 120, 87, 0.45);
+  --highlight-import-border: #047857;
+  --highlight-import-ring: rgba(4, 120, 87, 0.1);
+  --highlight-search-border: #2563eb;
+  --highlight-search-ring: rgba(37, 99, 235, 0.12);
+  --highlight-separator: rgba(31, 41, 51, 0.08);
   --danger-hover-bg: rgba(180, 35, 24, 0.16);
-  --modal-backdrop: rgba(12, 18, 14, 0.45);
+  --modal-backdrop: rgba(15, 23, 42, 0.35);
   --error-text: #b42318;
 }
 
@@ -211,6 +215,7 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 2px;
   background: var(--panel);
+  box-shadow: var(--surface-shadow);
 }
 
 .tracker-state,
@@ -354,7 +359,7 @@ input[type="number"],
 input[type="search"],
 textarea {
   width: 100%;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 2px;
   background: var(--panel);
   color: var(--text);
@@ -416,6 +421,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 2px;
   background: var(--panel);
+  box-shadow: var(--surface-shadow);
 }
 
 .hit {
@@ -1086,7 +1092,7 @@ textarea:focus {
   box-sizing: border-box;
   width: 100%;
   margin-bottom: 0.5rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 2px;
   background: var(--panel);
   color: var(--text);
