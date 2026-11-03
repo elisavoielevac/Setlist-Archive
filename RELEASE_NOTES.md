@@ -9,9 +9,9 @@
 
 ## Compatibility and testing
 
-The beta.4 installer is Developer ID signed, accepted by Apple notarization, and stapled. Gatekeeper verification passed. The native beta.4 app launched on Apple Silicon with macOS 15.7.4, restored the existing archive view, and displayed the refreshed light theme. All 23 automated regression tests passed. A clean installation and REAPER project import with beta.4 have not been retested.
+The beta.4 installer is Developer ID signed, accepted by Apple notarization, and stapled. Gatekeeper verification passed. The native beta.4 app launched on Apple Silicon with macOS 15.7.4, restored the existing archive view, and displayed the refreshed light theme. All 23 automated regression tests passed.
 
-The universal macOS installer contains Apple Silicon and Intel executables. Beta.3 was previously installed and tested locally on Apple Silicon with macOS 15.7.4, and downloading and opening beta.3 was confirmed on a 2019 Intel Mac. REAPER project (`.rpp`) import on that Intel Mac remains untested; its macOS version was not recorded. These beta.3 results do not establish beta.4 installation compatibility. Minimum macOS compatibility remains unverified.
+The universal macOS installer contains Apple Silicon and Intel executables. Beta.4 passed REAPER project (`.rpp`) import, song and detected-set count checks, and archive saving across quit and reopen on a 15-inch MacBook Pro (2018) with an Intel Core i7 running macOS Ventura 13.0.1.
 
 Archives are stored separately from the app. Export your archives for backup before updating, quit the old app, then replace it in Applications. Referenced audio files are not required to import a REAPER project.
 
@@ -19,7 +19,7 @@ Archives are stored separately from the app. Export your archives for backup bef
 
 # Reaper Setlist Archive 0.1.0-beta.3
 
-Published as a GitHub pre-release. The signed beta.3 DMG was accepted by Apple notarization, its ticket was attached and validated, and local installation testing passed. Downloading and opening beta.3 was subsequently confirmed on a 2019 Intel Mac; `.rpp` import on that Mac remains untested.
+Published as a GitHub pre-release. The signed beta.3 DMG was accepted by Apple notarization, its ticket was attached and validated, and local installation testing passed.
 
 ## Changes since beta.1
 
@@ -38,7 +38,7 @@ Published as a GitHub pre-release. The signed beta.3 DMG was accepted by Apple n
 
 ## Compatibility and testing
 
-Apple Silicon is the primary supported architecture. The universal build contains Apple Silicon and Intel executables; Intel support remains unverified on actual Intel hardware. Minimum macOS compatibility is not yet established through testing.
+The universal build contains Apple Silicon and Intel executables. Beta.3 installation testing passed on Apple Silicon with macOS 15.7.4. See the beta.4 notes above for subsequent Intel testing.
 
 The app remains a local archive of REAPER marker information and recording item timings. CSV imports provide markers only. There is no audio playback or cloud synchronization. Export archives regularly for backup.
 

@@ -8,7 +8,7 @@ The app works best when each imported project represents one show, song names ar
 
 The app reads project information; it does not play audio, recognize songs from sound, or change your REAPER project files. Referenced audio files are not needed for importing marker names and recording item timings. Archives contain extracted show information, not the recordings themselves.
 
-The universal macOS build contains Apple Silicon and Intel executables. Downloading and opening beta.3 was confirmed on a 2019 Intel Mac; REAPER project (`.rpp`) import on that Mac remains untested. Minimum supported macOS compatibility is not established.
+The universal macOS build contains Apple Silicon and Intel executables. Beta.4 passed REAPER project (`.rpp`) import, song and detected-set count checks, and archive saving across quit and reopen on a 15-inch MacBook Pro (2018) with an Intel Core i7 running macOS Ventura 13.0.1.
 
 ## Installation
 
@@ -17,7 +17,7 @@ The universal macOS build contains Apple Silicon and Intel executables. Download
 3. If replacing an older version, quit that version first and choose **Replace** when Finder asks.
 4. Eject the disk image and launch the app from **Applications**.
 
-Release installers are signed with Developer ID, notarized by Apple, and have the notarization ticket attached. Previous beta.3 installation testing passed on Apple Silicon with macOS 15.7.4, and downloading and opening beta.3 was confirmed on a 2019 Intel Mac. These results apply to beta.3; beta.4 still needs installation and import testing on the target Macs.
+Release installers are signed with Developer ID, notarized by Apple, and have the notarization ticket attached. Beta.4 launch and light-theme checks passed on Apple Silicon with macOS 15.7.4. Beta.4 also passed testing on an Intel MacBook Pro (2018) running macOS Ventura 13.0.1, including `.rpp` import, song and detected-set counts, and archive saving across quit and reopen.
 
 Archives are stored separately from the application bundle. Local replacement testing preserved the existing archive library. Export backups before updating, and download future updates from the release page; there is no automatic updater.
 
@@ -192,4 +192,4 @@ To bring one back into the app, use **Archive actions → Manage archives → Im
 
 Reaper Setlist Archive is free and open source under the [MIT License](LICENSE). Maintenance and support are best-effort.
 
-This manual describes **Reaper Setlist Archive 0.1.0-beta.4**. Supported show imports are `.rpp` and marker `.csv` files. Archives are stored locally; there is no cloud synchronization. Intel `.rpp` import and minimum macOS compatibility remain unverified.
+This manual describes **Reaper Setlist Archive 0.1.0-beta.4**. Supported show imports are `.rpp` and marker `.csv` files. Archives are stored locally; there is no cloud synchronization.

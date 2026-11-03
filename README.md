@@ -16,7 +16,9 @@ See [the user manual](USER_MANUAL.md) for the workflow, examples, and limitation
 
 Current configured version: **0.1.0-beta.4**. This update refreshes the light theme with neutral surfaces, emerald accents, and clearer fields and focus states.
 
-The universal macOS build contains Apple Silicon and Intel executables. The beta.3 installer passed local installation testing on Apple Silicon with macOS 15.7.4; the user also confirmed downloading and opening beta.3 on a 2019 Intel Mac. REAPER project (`.rpp`) import on that Intel Mac remains untested, and its macOS version was not recorded. These beta.3 results do not establish beta.4 installation compatibility. Minimum macOS compatibility remains unverified.
+The universal macOS build contains Apple Silicon and Intel executables. Beta.4 launch and light-theme checks passed on Apple Silicon with macOS 15.7.4.
+
+Beta.4 passed REAPER project (`.rpp`) import, song and detected-set count checks, and archive saving across quit and reopen on a 15-inch MacBook Pro (2018) with an Intel Core i7 running macOS Ventura 13.0.1.
 
 ## What it does
 
