@@ -12,13 +12,11 @@ The app is tailored to projects with named song markers and recording blocks tha
 
 See [the user manual](USER_MANUAL.md) for the workflow, examples, and limitations.
 
-## Beta status
+## Download
 
-Current configured version: **0.1.0-beta.4**. This update refreshes the light theme with neutral surfaces, emerald accents, and clearer fields and focus states.
+Download the universal macOS DMG for **0.1.0-beta.5** from [GitHub Releases](https://github.com/elisavoielevac/Setlist-Archive/releases). Open the DMG and drag the app into **Applications**. If you are updating, quit the older version first and export an archive backup before replacing it.
 
-The universal macOS build contains Apple Silicon and Intel executables. Beta.4 launch and light-theme checks passed on Apple Silicon with macOS 15.7.4.
-
-Beta.4 passed REAPER project (`.rpp`) import, song and detected-set count checks, and archive saving across quit and reopen on a 15-inch MacBook Pro (2018) with an Intel Core i7 running macOS Ventura 13.0.1.
+The universal build includes Apple Silicon and Intel executables. Beta.5 rounds the macOS app icon and adds illustrated instructions to the user manual. The previous beta was tested on Apple Silicon with macOS 15.7.4 and on Intel with macOS Ventura 13.0.1. Intel testing covered REAPER project import, song and detected-set counts, and save and reopen.
 
 ## What it does
 
@@ -44,7 +42,7 @@ Supported show files are:
 - `.rpp` REAPER project files
 - `.csv` marker exports with marker names and start times
 
-You can use the file picker, browser drop area, or native macOS drag and drop. Native folder drops are intentionally shallow: a folder must contain exactly one direct `.rpp` file. Subfolders are not scanned, and folders containing zero or multiple direct `.rpp` files are rejected.
+You can use the file picker, in-app drop area, or native macOS drag and drop. Native folder drops are intentionally shallow: a folder must contain exactly one direct `.rpp` file. Subfolders are not scanned, and folders containing zero or multiple direct `.rpp` files are rejected.
 
 Imported filenames may provide a date and venue. Date prefixes in `YYYYMMDD` and `YYYY-MM-DD` form are recognized when they contain a valid calendar date. Dates are stored as `YYYY-MM-DD` and displayed and edited as `DD-MM-YYYY`.
 

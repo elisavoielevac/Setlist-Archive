@@ -1,3 +1,13 @@
+# Reaper Setlist Archive 0.1.0-beta.5
+
+- Round the macOS app icon with transparent corners and preserve the existing artwork.
+- Add dark-theme screenshots of the show list, an expanded setlist, and archive statistics to the user manual.
+- Update the README with download and installation instructions.
+
+The universal macOS installer includes Apple Silicon and Intel executables. Beta.4 was tested on macOS 15.7.4 (Apple Silicon) and macOS Ventura 13.0.1 (Intel). Quit the old app before replacing it in Applications. Archives are stored separately from the app, and you can export backups from **Archive actions → Manage archives**.
+
+---
+
 # Reaper Setlist Archive 0.1.0-beta.4
 
 ## Changes since beta.3

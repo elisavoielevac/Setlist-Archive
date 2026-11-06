@@ -12,7 +12,7 @@ The universal macOS build contains Apple Silicon and Intel executables. Beta.4 p
 
 ## Installation
 
-1. Download the beta installer (`.dmg`) from the GitHub release's Assets section.
+1. Download the beta installer (`.dmg`) from [GitHub Releases](https://github.com/elisavoielevac/Setlist-Archive/releases) under Assets.
 2. Open the disk image and drag **Reaper Setlist Archive** onto **Applications**.
 3. If replacing an older version, quit that version first and choose **Replace** when Finder asks.
 4. Eject the disk image and launch the app from **Applications**.
@@ -34,6 +34,8 @@ Archives are stored separately from the application bundle. Local replacement te
 3. Choose **Add shows** to select `.rpp` or marker `.csv` files, or drop them into the import area. You can add several files at once.
 4. Click a show to see its details, detected recording sets, and numbered songs. Choose **Edit details** to correct its date, venue, or other metadata.
 5. Use search to find a song or show, or open **Stats** to compare your archive.
+
+![Dark theme showing the Summer Sessions example archive, with an expanded show, its detected recording length, and its numbered setlist.](docs/screenshots/dark-shows.png)
 
 Changes are saved automatically. The app shows **Saving…**, **Saved**, or **Save failed** in the archive bar. When the app starts, it attempts to reopen the last active archive.
 
@@ -164,6 +166,8 @@ Open the **Stats** tab to see:
 - Longest and shortest detected show lengths
 - Average detected set length
 
+![Dark theme showing archive totals, most-played songs, and recording-length statistics for the same example archive.](docs/screenshots/dark-stats.png)
+
 Recording statistics use the same automatic set detection shown in the show cards, including the five-minute minimum. Shows without qualifying recording blocks do not contribute to recording-length averages or longest/shortest comparisons. The displayed average is `0:00` when no shows have a qualifying recording length.
 
 ## Deleting shows
@@ -192,4 +196,4 @@ To bring one back into the app, use **Archive actions → Manage archives → Im
 
 Reaper Setlist Archive is free and open source under the [MIT License](LICENSE). Maintenance and support are best-effort.
 
-This manual describes **Reaper Setlist Archive 0.1.0-beta.4**. Supported show imports are `.rpp` and marker `.csv` files. Archives are stored locally; there is no cloud synchronization.
+This manual describes **Reaper Setlist Archive 0.1.0-beta.5**. The screenshots use fictional shows and song titles. Supported show imports are `.rpp` and marker `.csv` files. Archives are stored locally; there is no cloud synchronization.
